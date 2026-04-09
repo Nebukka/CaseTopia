@@ -29,14 +29,13 @@ const REEL_PL = 398;
 // Reel background — matches the chat sidebar
 const REEL_BG = "hsl(var(--sidebar))";
 
-// Vertical reel config — same container as the single-case reel (168px),
-// large items centered with spacing so neighbors peek at top/bottom
+// Vertical reel config — each slot is exactly one item tall (no peeking neighbors)
 function getVConfig(_count: number) {
-  const containerH = 168; // matches the single-case horizontal reel height
-  const itemH      = 144; // large items — nearly full-height, same visual weight
-  const gap        = 6;   // tight spacing between items
-  const step       = itemH + gap;                         // 150px
-  const paddingTop = Math.round((containerH - itemH) / 2); // 12px — centers item in container
+  const itemH      = 160; // card height — shows image + name + price
+  const gap        = 0;
+  const step       = itemH + gap; // 160px per card
+  const containerH = itemH;       // viewport = exactly 1 item
+  const paddingTop = 0;
   return { containerH, itemH, gap, step, paddingTop };
 }
 
@@ -255,6 +254,28 @@ function VerticalItemBox({ item }: { item: CaseItem }) {
   );
 }
 
+/* Vertical reel card — fills one slot, image + name + price centered */
+function VerticalReelItemBox({ item, height = 160 }: { item: CaseItem; height?: number }) {
+  const { formatBalance } = useCurrency();
+  const rarity = rarityFromChance(item.chance);
+  const hex = RARITY_HEX[rarity] ?? "#888";
+  return (
+    <div
+      className="flex-shrink-0 flex flex-col items-center justify-center gap-1.5"
+      style={{ height, borderBottom: `3px solid ${hex}66` }}
+    >
+      <div style={{ filter: `drop-shadow(0 0 10px ${hex}aa)` }}>
+        <ItemThumbnail item={item} size="md" />
+      </div>
+      <div className="text-[11px] font-semibold text-white/90 truncate text-center px-2 max-w-full leading-tight">{item.name}</div>
+      <div className="flex items-center gap-0.5">
+        <span className="text-[11px] font-bold text-yellow-400">{formatBalance(item.value)}</span>
+        <GemIcon size={9} />
+      </div>
+    </div>
+  );
+}
+
 /* Reel-only item box — no background, no text, just image + rarity bottom bar */
 function ReelItemBox({ item, highlighted = false, rowHeight = 148 }: { item: CaseItem; highlighted?: boolean; rowHeight?: number }) {
   const rarity = rarityFromChance(item.chance);
@@ -273,34 +294,6 @@ function ReelItemBox({ item, highlighted = false, rowHeight = 148 }: { item: Cas
   );
 }
 
-/* Vertical reel-only item — no text, just image */
-function VerticalReelItemBox({ item, height = 108 }: { item: CaseItem; height?: number }) {
-  const rarity = rarityFromChance(item.chance);
-  const hex = RARITY_HEX[rarity] ?? "#888";
-  return (
-    <div className="flex-shrink-0" style={{ height, width: "100%", position: "relative" }}>
-      {/* Top separator line */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "rgba(255,255,255,0.10)", zIndex: 2 }} />
-      {/* Grey card */}
-      <div
-        className="flex items-center justify-center"
-        style={{
-          height: "100%",
-          width: "100%",
-          background: "rgba(255,255,255,0.04)",
-          borderLeft: `3px solid ${hex}`,
-          borderRight: `3px solid ${hex}`,
-        }}
-      >
-        <div style={{ filter: `drop-shadow(0 0 8px ${hex}bb)` }}>
-          <ItemThumbnail item={item} size="md" />
-        </div>
-      </div>
-      {/* Bottom separator line */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 1, background: "rgba(255,255,255,0.10)", zIndex: 2 }} />
-    </div>
-  );
-}
 
 type ModalMode = "info" | "opening" | "bonus_orb" | "bonus_spin" | "bonus_case" | "result";
 
@@ -745,6 +738,7 @@ export default function Cases() {
 
   // Shared reel animation runner used by both real opens and demo spins
   const runReelAnimation = (c: Case, perReel: CaseItem[][], wonItemsList: CaseItem[], duration: number, isDemo: boolean) => {
+    const isVertical = perReel.length > 1; // vertical columns for 2-4, horizontal for 1
     // Inject item at WINNING_INDEX — nested case shows chest, gold orb for ≤3%, real item otherwise
     const updated = perReel.map((items, idx) => {
       const newItems = [...items];
@@ -760,11 +754,18 @@ export default function Cases() {
       updated.forEach((_, idx) => {
         const ref = reelRefs.current[idx];
         if (ref) {
-          const randomOffset = Math.floor(Math.random() * 40) - 20;
-          const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
-          ref.style.transition = `transform ${duration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
-          ref.style.transform = `translateX(-${targetScroll}px)`;
-          startTickMonitor(ref, false);
+          const randomOffset = isVertical ? (Math.floor(Math.random() * 60) - 30) : (Math.floor(Math.random() * 40) - 20);
+          if (isVertical) {
+            const targetScroll = WINNING_INDEX * getVConfig(perReel.length).step + randomOffset;
+            ref.style.transition = `transform ${duration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+            ref.style.transform = `translateY(-${targetScroll}px)`;
+            startTickMonitor(ref, true);
+          } else {
+            const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
+            ref.style.transition = `transform ${duration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+            ref.style.transform = `translateX(-${targetScroll}px)`;
+            startTickMonitor(ref, false);
+          }
         }
       });
     }, 50);
@@ -773,8 +774,13 @@ export default function Cases() {
     setTimeout(() => {
       reelRefs.current.forEach((ref) => {
         if (ref) {
-          ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
-          ref.style.transform = `translateX(-${WINNING_INDEX * ITEM_WIDTH}px)`;
+          if (isVertical) {
+            ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
+            ref.style.transform = `translateY(-${WINNING_INDEX * getVConfig(perReel.length).step}px)`;
+          } else {
+            ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
+            ref.style.transform = `translateX(-${WINNING_INDEX * ITEM_WIDTH}px)`;
+          }
         }
       });
     }, duration + 60);
@@ -836,11 +842,18 @@ export default function Cases() {
               if (!allBonusIndices.has(idx)) return;
               const ref = reelRefs.current[idx];
               if (ref) {
-                const randomOffset = Math.floor(Math.random() * 40) - 20;
-                const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
-                ref.style.transition = `transform ${bonusDuration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
-                ref.style.transform = `translateX(-${targetScroll}px)`;
-                startTickMonitor(ref, false);
+                const randomOffset = isVertical ? (Math.floor(Math.random() * 60) - 30) : (Math.floor(Math.random() * 40) - 20);
+                if (isVertical) {
+                  const targetScroll = WINNING_INDEX * getVConfig(perReel.length).step + randomOffset;
+                  ref.style.transition = `transform ${bonusDuration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+                  ref.style.transform = `translateY(-${targetScroll}px)`;
+                  startTickMonitor(ref, true);
+                } else {
+                  const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
+                  ref.style.transition = `transform ${bonusDuration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+                  ref.style.transform = `translateX(-${targetScroll}px)`;
+                  startTickMonitor(ref, false);
+                }
               }
             });
           }, 50);
@@ -849,8 +862,13 @@ export default function Cases() {
           setTimeout(() => {
             reelRefs.current.forEach((ref, idx) => {
               if (ref && allBonusIndices.has(idx)) {
-                ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
-                ref.style.transform = `translateX(-${WINNING_INDEX * ITEM_WIDTH}px)`;
+                if (isVertical) {
+                  ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
+                  ref.style.transform = `translateY(-${WINNING_INDEX * getVConfig(perReel.length).step}px)`;
+                } else {
+                  ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
+                  ref.style.transform = `translateX(-${WINNING_INDEX * ITEM_WIDTH}px)`;
+                }
               }
             });
           }, bonusDuration + 60);
@@ -894,7 +912,7 @@ export default function Cases() {
                 reelRefs.current.forEach((ref, idx) => {
                   if (ref && nestedResultIndices.includes(idx)) {
                     ref.style.transition = "none";
-                    ref.style.transform = "translateX(0)";
+                    ref.style.transform = isVertical ? "translateY(0)" : "translateX(0)";
                   }
                 });
                 setReelItemsPerReel(nestedPerReel);
@@ -906,11 +924,18 @@ export default function Cases() {
                 nestedResultIndices.forEach(idx => {
                   const ref = reelRefs.current[idx];
                   if (ref) {
-                    const randomOffset = Math.floor(Math.random() * 40) - 20;
-                    const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
-                    ref.style.transition = `transform ${bonusDuration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
-                    ref.style.transform = `translateX(-${targetScroll}px)`;
-                    startTickMonitor(ref, false);
+                    const randomOffset = isVertical ? (Math.floor(Math.random() * 60) - 30) : (Math.floor(Math.random() * 40) - 20);
+                    if (isVertical) {
+                      const targetScroll = WINNING_INDEX * getVConfig(perReel.length).step + randomOffset;
+                      ref.style.transition = `transform ${bonusDuration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+                      ref.style.transform = `translateY(-${targetScroll}px)`;
+                      startTickMonitor(ref, true);
+                    } else {
+                      const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
+                      ref.style.transition = `transform ${bonusDuration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+                      ref.style.transform = `translateX(-${targetScroll}px)`;
+                      startTickMonitor(ref, false);
+                    }
                   }
                 });
               }, BONUS_CASE_DELAY + 50);
@@ -919,8 +944,13 @@ export default function Cases() {
                 nestedResultIndices.forEach(idx => {
                   const ref = reelRefs.current[idx];
                   if (ref) {
-                    ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
-                    ref.style.transform = `translateX(-${WINNING_INDEX * ITEM_WIDTH}px)`;
+                    if (isVertical) {
+                      ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
+                      ref.style.transform = `translateY(-${WINNING_INDEX * getVConfig(perReel.length).step}px)`;
+                    } else {
+                      ref.style.transition = "transform 300ms cubic-bezier(0.25, 0, 0, 1)";
+                      ref.style.transform = `translateX(-${WINNING_INDEX * ITEM_WIDTH}px)`;
+                    }
                   }
                 });
               }, BONUS_CASE_DELAY + bonusDuration + 60);
@@ -1470,46 +1500,110 @@ export default function Cases() {
                   <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 3, marginLeft: -1, backgroundColor: "#a78bfa", zIndex: 99, pointerEvents: "none" }} />
                 </div>
                 ) : (
-                /* Multi horizontal reel static preview — N slots side by side */
-                <div style={{ display: "flex", overflow: "hidden" }}>
-                  {Array.from({ length: openCount }).map((_, idx) => (
-                    <div key={idx} style={{ flex: 1, position: "relative", height: 168, overflow: "hidden", borderRight: idx < openCount - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 60, background: `linear-gradient(to right, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-                      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 60, background: `linear-gradient(to left, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-                      <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 3, marginLeft: -1, backgroundColor: "#a78bfa", zIndex: 99, pointerEvents: "none" }} />
-                      <div style={{ display: "flex", gap: 0, height: "100%", paddingLeft: "calc(50% - 48px)" }}>
-                        {staticReel.map((item, i) => <ReelItemBox key={i} item={item} highlighted={i === 5} rowHeight={168} />)}
-                      </div>
+                /* Multi static preview — vertical cards side by side */
+                (() => {
+                  const vc = getVConfig(openCount);
+                  return (
+                    <div style={{ display: "flex", gap: 10, padding: "0 16px" }}>
+                      {Array.from({ length: openCount }).map((_, idx) => {
+                        const item = staticReel[idx % staticReel.length] ?? staticReel[0];
+                        return item ? (
+                          <div key={idx} style={{ flex: 1, minWidth: 0, borderRadius: 10, overflow: "hidden" }}>
+                            <VerticalReelItemBox item={item} height={vc.itemH} />
+                          </div>
+                        ) : null;
+                      })}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()
                 )
               ) : (
                 /* Animated reels */
                 <>
-                  <div style={{ display: "flex", overflow: "hidden" }}>
-                    {reelItemsPerReel.map((reelItems, idx) => {
-                      const isBonus = bonusReelIndices.has(idx);
-                      const isNestedCase = nestedCaseBonusReelIndices.has(idx);
-                      const lineColor = (isBonus || isNestedCase) && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
-                      const isSingle = reelItemsPerReel.length === 1;
+                  {openCount > 1 ? (
+                    /* VERTICAL columns — side by side, each spinning top-to-bottom */
+                    (() => {
+                      const vc = getVConfig(reelItemsPerReel.length || openCount);
                       return (
-                        <div key={idx} style={{ flex: 1, position: "relative", borderRight: idx < reelItemsPerReel.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                          {modalMode === "bonus_case" && bonusCaseInfo && isNestedCase ? (
-                            <motion.div
-                              key="bonus-case-display"
-                              initial={{ opacity: 0, scale: 0.6 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ type: "spring", stiffness: 180, damping: 14 }}
-                              style={{ height: 168, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, background: "radial-gradient(ellipse at center, rgba(251,191,36,0.18) 0%, transparent 70%)" }}
-                            >
-                              <div style={{ width: isSingle ? 80 : 60, height: isSingle ? 80 : 60 }}>
-                                <CaseLogo imageUrl={bonusCaseInfo.imageUrl} size={isSingle ? 80 : 60} />
+                        <div style={{ display: "flex", gap: 10, padding: "0 16px" }}>
+                          {reelItemsPerReel.map((reelItems, idx) => {
+                            const isBonus = bonusReelIndices.has(idx);
+                            const isNestedCase = nestedCaseBonusReelIndices.has(idx);
+                            return (
+                              <div key={idx} style={{ flex: 1, minWidth: 0, position: "relative" }}>
+                                {modalMode === "bonus_case" && bonusCaseInfo && isNestedCase ? (
+                                  <motion.div
+                                    key="bonus-case-display"
+                                    initial={{ opacity: 0, scale: 0.6 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                                    style={{ height: vc.containerH, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, background: "radial-gradient(ellipse at center, rgba(251,191,36,0.18) 0%, transparent 70%)", borderRadius: 10 }}
+                                  >
+                                    <CaseLogo imageUrl={bonusCaseInfo.imageUrl} size={56} />
+                                  </motion.div>
+                                ) : (
+                                  <div style={{ position: "relative", height: vc.containerH, overflow: "hidden", borderRadius: 10 }}>
+                                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 36, background: `linear-gradient(to bottom, ${REEL_BG}, transparent)`, zIndex: 2, pointerEvents: "none" }} />
+                                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 36, background: `linear-gradient(to top, ${REEL_BG}, transparent)`, zIndex: 2, pointerEvents: "none" }} />
+                                    <div
+                                      ref={(el) => { reelRefs.current[idx] = el; }}
+                                      style={{ display: "flex", flexDirection: "column" }}
+                                    >
+                                      {reelItems.map((item, i) => <VerticalReelItemBox key={i} item={item} height={vc.itemH} />)}
+                                    </div>
+                                    {modalMode === "bonus_orb" && (isBonus || isNestedCase) && (
+                                      <motion.div
+                                        key={`orb-overlay-col-${idx}`}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ duration: 0.2 }}
+                                        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(1px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, borderRadius: 10 }}
+                                      >
+                                        <motion.img
+                                          key="gold-orb-col"
+                                          src={legendaryOrbSrc}
+                                          alt="Bonus Orb"
+                                          initial={{ scale: 0.4, opacity: 0 }}
+                                          animate={{ scale: 1, opacity: 1 }}
+                                          transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
+                                          style={{ width: 56, height: 56, objectFit: "contain", imageRendering: "pixelated", filter: "drop-shadow(0 0 18px rgba(251,191,36,0.9))" }}
+                                        />
+                                      </motion.div>
+                                    )}
+                                  </div>
+                                )}
+                                {modalMode === "bonus_spin" && isNestedCase && (
+                                  <div className="text-center text-[10px] font-bold animate-pulse mt-1 uppercase" style={{ color: "#fbbf24" }}>🎁 Super Summer!</div>
+                                )}
                               </div>
-                            </motion.div>
-                          ) : (
+                            );
+                          })}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    /* HORIZONTAL reel — single case with left/right arrows */
+                    <>
+                      {reelItemsPerReel.map((reelItems, idx) => {
+                        const isBonus = bonusReelIndices.has(idx);
+                        const isNestedCase = nestedCaseBonusReelIndices.has(idx);
+                        const lineColor = (isBonus || isNestedCase) && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
+                        return (
+                          <div key={idx} style={{ position: "relative" }}>
                             <div style={{ position: "relative", height: 168, overflow: "hidden" }}>
-                              {isSingle && (
+                              {modalMode === "bonus_case" && bonusCaseInfo ? (
+                                <motion.div
+                                  key="bonus-case-display"
+                                  initial={{ opacity: 0, scale: 0.6 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                                  style={{ height: 168, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, background: "radial-gradient(ellipse at center, rgba(251,191,36,0.18) 0%, transparent 70%)" }}
+                                >
+                                  <div style={{ width: 80, height: 80 }}>
+                                    <CaseLogo imageUrl={bonusCaseInfo.imageUrl} size={80} />
+                                  </div>
+                                </motion.div>
+                              ) : (
                                 <>
                                   <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 44, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
                                     <ChevronLeft style={{ color: "rgba(255,255,255,0.22)", width: 22, height: 22 }} />
@@ -1517,59 +1611,56 @@ export default function Cases() {
                                   <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 44, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
                                     <ChevronRight style={{ color: "rgba(255,255,255,0.22)", width: 22, height: 22 }} />
                                   </div>
+                                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 120, background: `linear-gradient(to right, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
+                                  <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 120, background: `linear-gradient(to left, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
+                                  <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 3, marginLeft: -1, backgroundColor: lineColor, zIndex: 99, pointerEvents: "none" }} />
+                                  <div
+                                    ref={(el) => { reelRefs.current[idx] = el; }}
+                                    style={{ display: "flex", gap: 0, height: "100%", paddingLeft: "calc(50% - 48px)" }}
+                                  >
+                                    {reelItems.map((item, i) => <ReelItemBox key={i} item={item} rowHeight={168} />)}
+                                  </div>
+                                  {modalMode === "bonus_orb" && (isBonus || isNestedCase) && (
+                                    <motion.div
+                                      key={`orb-overlay-${idx}`}
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ duration: 0.2 }}
+                                      style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(1px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20 }}
+                                    >
+                                      <motion.img
+                                        key="gold-orb"
+                                        src={legendaryOrbSrc}
+                                        alt="Bonus Orb"
+                                        initial={{ scale: 0.4, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
+                                        style={{ width: 80, height: 80, objectFit: "contain", imageRendering: "pixelated", filter: "drop-shadow(0 0 20px rgba(251,191,36,0.9)) drop-shadow(0 0 40px rgba(251,191,36,0.5))" }}
+                                      />
+                                    </motion.div>
+                                  )}
                                 </>
                               )}
-                              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: isSingle ? 120 : 60, background: `linear-gradient(to right, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-                              <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isSingle ? 120 : 60, background: `linear-gradient(to left, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-                              <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 3, marginLeft: -1, backgroundColor: lineColor, zIndex: 99, pointerEvents: "none" }} />
-                              <div
-                                ref={(el) => { reelRefs.current[idx] = el; }}
-                                style={{ display: "flex", gap: 0, height: "100%", paddingLeft: "calc(50% - 48px)" }}
-                              >
-                                {reelItems.map((item, i) => <ReelItemBox key={i} item={item} rowHeight={168} />)}
-                              </div>
-                              {modalMode === "bonus_orb" && (isBonus || isNestedCase) && (
-                                <motion.div
-                                  key={`orb-overlay-${idx}`}
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ duration: 0.2 }}
-                                  style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(1px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20 }}
-                                >
-                                  <motion.img
-                                    key="gold-orb"
-                                    src={legendaryOrbSrc}
-                                    alt="Bonus Orb"
-                                    initial={{ scale: 0.4, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
-                                    style={{ width: isSingle ? 80 : 60, height: isSingle ? 80 : 60, objectFit: "contain", imageRendering: "pixelated", filter: "drop-shadow(0 0 20px rgba(251,191,36,0.9)) drop-shadow(0 0 40px rgba(251,191,36,0.5))" }}
-                                  />
-                                </motion.div>
-                              )}
                             </div>
-                          )}
-                          {modalMode === "bonus_spin" && isNestedCase && (
-                            <div className="text-center text-[10px] font-bold animate-pulse mt-1 uppercase" style={{ color: "#fbbf24" }}>🎁 Super Summer!</div>
-                          )}
-                          {modalMode === "result" && wonItems[idx] && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.25 }}
-                              className="text-center mt-2 px-2"
-                            >
-                              <p className="text-[13px] font-semibold text-white/90 truncate leading-tight">{wonItems[idx].name}</p>
-                              <div className="flex items-center justify-center gap-1 mt-0.5">
-                                <span className="text-[13px] font-bold text-yellow-400">{fmt(wonItems[idx].value)}</span>
-                                <GemIcon size={13} />
-                              </div>
-                            </motion.div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                            {modalMode === "result" && wonItems[idx] && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="text-center mt-2 px-2"
+                              >
+                                <p className="text-[13px] font-semibold text-white/90 truncate leading-tight">{wonItems[idx].name}</p>
+                                <div className="flex items-center justify-center gap-1 mt-0.5">
+                                  <span className="text-[13px] font-bold text-yellow-400">{fmt(wonItems[idx].value)}</span>
+                                  <GemIcon size={13} />
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                   {modalMode === "opening" && (
                     <div className="text-center text-xs text-muted-foreground animate-pulse py-2">
                       Opening{openCount > 1 ? ` ${openCount} cases` : ""}...
