@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { X, Clock } from "lucide-react";
 import { rarityFromChance } from "../data/itemsCatalog";
 import dlSrc from "@assets/dl_1775514218033.webp";
 import goldOrbSrc from "@assets/legendary_orb_1775538080736.webp";
 import purpleOrbSrc from "@assets/legendary_orb_1775539381857.webp";
-import { WonPopup } from "./WonPopup";
 
 interface CaseItem {
   id: string;
@@ -511,8 +511,8 @@ export function DailyCaseModal({ tierNum, tierLabel, tierColor, caseId, claimed 
 
         {/* Reel area */}
         <div className="shrink-0 py-4 px-0 relative" style={{ background: "hsl(var(--sidebar))" }}>
-          {/* Center marker */}
-          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 z-10 pointer-events-none flex flex-col items-center">
+          {/* Center marker — hidden on result */}
+          <div className={`absolute top-0 bottom-0 left-1/2 -translate-x-1/2 z-10 pointer-events-none flex flex-col items-center${phase === "result" ? " opacity-0" : ""}`}>
             <div className="w-0.5 h-full" style={{ background: `linear-gradient(to bottom, ${tierColor}cc, ${tierColor}44)` }} />
             <div
               className="absolute top-2 w-0 h-0"
@@ -543,7 +543,7 @@ export function DailyCaseModal({ tierNum, tierLabel, tierColor, caseId, claimed 
               </div>
             )}
 
-            {(phase === "spinning" || phase === "bonus_orb" || phase === "bonus_spin" || phase === "result") && (
+            {(phase === "spinning" || phase === "bonus_orb" || phase === "bonus_spin") && (
               <div
                 ref={reelRef}
                 className="flex items-center will-change-transform"
@@ -553,6 +553,34 @@ export function DailyCaseModal({ tierNum, tierLabel, tierColor, caseId, claimed 
                   <ReelItem key={i} item={item} />
                 ))}
               </div>
+            )}
+
+            {phase === "result" && wonItem && (
+              <motion.div
+                key="daily-result"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.18 }}
+                className="h-full flex flex-col items-center justify-center gap-2"
+              >
+                <motion.div
+                  initial={{ scale: 0.72, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 22, delay: 0.06 }}
+                  style={{ filter: `drop-shadow(0 0 16px ${RARITY_HEX[rarityFromChance(wonItem.chance)] ?? "#888"}aa)` }}
+                >
+                  <ItemThumb item={wonItem} size={62} />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: 0.14 }}
+                  className="text-center"
+                >
+                  <p className="text-sm font-semibold text-white/90 leading-tight">{wonItem.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{wonItem.value} 💎</p>
+                </motion.div>
+              </motion.div>
             )}
           </div>
 
@@ -587,10 +615,6 @@ export function DailyCaseModal({ tierNum, tierLabel, tierColor, caseId, claimed 
             </div>
           )}
 
-          {/* Result popup — centered square that pops in then fades out */}
-          {phase === "result" && wonItem && (
-            <WonPopup wonItem={wonItem} />
-          )}
         </div>
 
         {/* Action area — fixed height so no layout shift between phases */}
