@@ -1,0 +1,36 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import authRouter from "./auth";
+import casesRouter from "./cases";
+import battlesRouter from "./battles";
+import gamesRouter from "./games";
+import chatRouter from "./chat";
+import leaderboardRouter from "./leaderboard";
+import betsRouter from "./bets";
+import usersRouter from "./users";
+import notificationsRouter from "./notifications";
+import presenceRouter from "./presence";
+import sseRouter from "./sse";
+import walletRouter from "./wallet";
+import botRouter from "./bot";
+import dailyRouter from "./daily";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(authRouter);
+router.use(sseRouter);
+router.use(casesRouter);
+router.use(battlesRouter);
+router.use(gamesRouter);
+router.use(chatRouter);
+router.use(leaderboardRouter);
+router.use(betsRouter);
+router.use(usersRouter);
+router.use(notificationsRouter);
+router.use(presenceRouter);
+router.use(walletRouter);
+router.use(botRouter);
+router.use(dailyRouter);
+
+export default router;

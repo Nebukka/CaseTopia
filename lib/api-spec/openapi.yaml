@@ -1,0 +1,820 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: BetTopia gambling platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: user
+    description: User management
+  - name: cases
+    description: Cases game
+  - name: caseBattles
+    description: Case battles game
+  - name: crash
+    description: Crash game
+  - name: limbo
+    description: Limbo game
+  - name: mines
+    description: Mines game
+  - name: chat
+    description: Chat messages
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "200":
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cases:
+    get:
+      operationId: getCases
+      tags: [cases]
+      summary: Get all cases
+      responses:
+        "200":
+          description: List of cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Case"
+
+  /cases/{id}:
+    get:
+      operationId: getCaseById
+      tags: [cases]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Get a case by ID
+      responses:
+        "200":
+          description: Case details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+
+  /cases/{id}/open:
+    post:
+      operationId: openCase
+      tags: [cases]
+      summary: Open a case
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Case opened, item won
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseOpenResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /battles:
+    get:
+      operationId: getBattles
+      tags: [caseBattles]
+      summary: Get all case battles
+      responses:
+        "200":
+          description: List of battles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Battle"
+
+    post:
+      operationId: createBattle
+      tags: [caseBattles]
+      summary: Create a new case battle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBattleBody"
+      responses:
+        "200":
+          description: Battle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Battle"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /battles/{id}:
+    get:
+      operationId: getBattleById
+      tags: [caseBattles]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Get battle by ID
+      responses:
+        "200":
+          description: Battle details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Battle"
+
+  /battles/{id}/join:
+    post:
+      operationId: joinBattle
+      tags: [caseBattles]
+      summary: Join a case battle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Joined battle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Battle"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /crash/play:
+    post:
+      operationId: playCrash
+      tags: [crash]
+      summary: Place bet in crash game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrashBetBody"
+      responses:
+        "200":
+          description: Crash game result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrashResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /crash/history:
+    get:
+      operationId: getCrashHistory
+      tags: [crash]
+      summary: Get recent crash game history
+      responses:
+        "200":
+          description: Crash history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CrashHistoryItem"
+
+  /limbo/play:
+    post:
+      operationId: playLimbo
+      tags: [limbo]
+      summary: Play limbo game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LimboBetBody"
+      responses:
+        "200":
+          description: Limbo game result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimboResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mines/start:
+    post:
+      operationId: startMines
+      tags: [mines]
+      summary: Start a mines game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MinesStartBody"
+      responses:
+        "200":
+          description: Mines game started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MinesGame"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mines/reveal:
+    post:
+      operationId: revealMines
+      tags: [mines]
+      summary: Reveal a tile in mines
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MinesRevealBody"
+      responses:
+        "200":
+          description: Tile revealed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MinesRevealResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mines/cashout:
+    post:
+      operationId: cashoutMines
+      tags: [mines]
+      summary: Cash out mines game
+      responses:
+        "200":
+          description: Cashed out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MinesCashoutResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/messages:
+    get:
+      operationId: getChatMessages
+      tags: [chat]
+      summary: Get recent chat messages
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a chat message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "200":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [user]
+      summary: Get top players leaderboard
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    RegisterBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+      required: [username, password, email]
+
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required: [user, token]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        balance:
+          type: number
+        avatar:
+          type: string
+        level:
+          type: integer
+        totalWagered:
+          type: number
+        createdAt:
+          type: string
+      required: [id, username, email, balance]
+
+    CaseItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        imageUrl:
+          type: string
+        rarity:
+          type: string
+        value:
+          type: number
+        chance:
+          type: number
+        color:
+          type: string
+      required: [id, name, imageUrl, rarity, value, chance, color]
+
+    Case:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        imageUrl:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaseItem"
+      required: [id, name, imageUrl, price, category, items]
+
+    CaseOpenResult:
+      type: object
+      properties:
+        item:
+          $ref: "#/components/schemas/CaseItem"
+        newBalance:
+          type: number
+      required: [item, newBalance]
+
+    Battle:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        cases:
+          type: array
+          items:
+            $ref: "#/components/schemas/Case"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/BattlePlayer"
+        maxPlayers:
+          type: integer
+        totalValue:
+          type: number
+        winnerId:
+          type: string
+        createdAt:
+          type: string
+        rounds:
+          type: array
+          items:
+            $ref: "#/components/schemas/BattleRound"
+      required: [id, status, cases, players, maxPlayers, totalValue, createdAt]
+
+    BattlePlayer:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        avatar:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CaseItem"
+        totalValue:
+          type: number
+      required: [userId, username, totalValue]
+
+    BattleRound:
+      type: object
+      properties:
+        roundNumber:
+          type: integer
+        caseId:
+          type: string
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+              item:
+                $ref: "#/components/schemas/CaseItem"
+            required: [userId, item]
+      required: [roundNumber, caseId, results]
+
+    CreateBattleBody:
+      type: object
+      properties:
+        caseIds:
+          type: array
+          items:
+            type: string
+        maxPlayers:
+          type: integer
+      required: [caseIds, maxPlayers]
+
+    CrashBetBody:
+      type: object
+      properties:
+        amount:
+          type: number
+        autoCashout:
+          type: number
+      required: [amount]
+
+    CrashResult:
+      type: object
+      properties:
+        crashPoint:
+          type: number
+        cashedOut:
+          type: boolean
+        cashoutMultiplier:
+          type: number
+        profit:
+          type: number
+        newBalance:
+          type: number
+      required: [crashPoint, cashedOut, newBalance]
+
+    CrashHistoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        crashPoint:
+          type: number
+        createdAt:
+          type: string
+      required: [id, crashPoint, createdAt]
+
+    LimboBetBody:
+      type: object
+      properties:
+        amount:
+          type: number
+        targetMultiplier:
+          type: number
+      required: [amount, targetMultiplier]
+
+    LimboResult:
+      type: object
+      properties:
+        result:
+          type: number
+        win:
+          type: boolean
+        profit:
+          type: number
+        newBalance:
+          type: number
+      required: [result, win, newBalance]
+
+    MinesStartBody:
+      type: object
+      properties:
+        amount:
+          type: number
+        mineCount:
+          type: integer
+      required: [amount, mineCount]
+
+    MinesGame:
+      type: object
+      properties:
+        gameId:
+          type: string
+        mineCount:
+          type: integer
+        amount:
+          type: number
+        revealed:
+          type: array
+          items:
+            type: integer
+        currentMultiplier:
+          type: number
+        status:
+          type: string
+      required: [gameId, mineCount, amount, revealed, currentMultiplier, status]
+
+    MinesRevealBody:
+      type: object
+      properties:
+        gameId:
+          type: string
+        tileIndex:
+          type: integer
+      required: [gameId, tileIndex]
+
+    MinesRevealResult:
+      type: object
+      properties:
+        isMine:
+          type: boolean
+        currentMultiplier:
+          type: number
+        newBalance:
+          type: number
+        gameOver:
+          type: boolean
+        minePositions:
+          type: array
+          items:
+            type: integer
+        profit:
+          type: number
+      required: [isMine, currentMultiplier, newBalance, gameOver]
+
+    MinesCashoutResult:
+      type: object
+      properties:
+        profit:
+          type: number
+        newBalance:
+          type: number
+        minePositions:
+          type: array
+          items:
+            type: integer
+      required: [profit, newBalance, minePositions]
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        username:
+          type: string
+        avatar:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+      required: [id, userId, username, message, createdAt]
+
+    SendMessageBody:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        avatar:
+          type: string
+        totalWagered:
+          type: number
+        level:
+          type: integer
+      required: [userId, username, totalWagered, level]
