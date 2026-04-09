@@ -1,5 +1,4 @@
 import React, { useState, useRef } from "react";
-import { WonPopup } from "../components/WonPopup";
 import { Layout } from "../components/Layout";
 import { useGetCases, openCase, useCreateCommunityCase, useDeleteCommunityCase } from "@workspace/api-client-react";
 import type { Case, CaseItem } from "@workspace/api-client-react";
@@ -269,65 +268,6 @@ function ReelItemBox({ item, highlighted = false, rowHeight = 148 }: { item: Cas
         <ItemThumbnail item={item} size={imgSize} />
       </div>
       <div style={{ height: 3, width: "100%", backgroundColor: hex, opacity: 0.85, flexShrink: 0 }} />
-    </div>
-  );
-}
-
-/* Total won overlay for multi-case opens */
-function TotalWonOverlay({ total, fmt }: { total: number; fmt: (n: number) => string }) {
-  const [phase, setPhase] = React.useState<"enter" | "visible" | "leave" | "hidden">("enter");
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const leaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  React.useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
-    setPhase("enter");
-    timerRef.current = setTimeout(() => {
-      setPhase("leave");
-      leaveTimerRef.current = setTimeout(() => setPhase("hidden"), 250);
-    }, 8000);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
-    };
-  }, [total]);
-
-  if (phase === "hidden") return null;
-
-  const animation =
-    phase === "enter"
-      ? "wonPopupIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both"
-      : phase === "leave"
-      ? "wonPopupOut 0.2s cubic-bezier(0.55,0,1,0.45) both"
-      : "none";
-
-  return (
-    <div
-      className="absolute inset-0 flex items-center justify-center pointer-events-none"
-      style={{ zIndex: 102 }}
-    >
-      <style>{`
-        @keyframes wonPopupIn { from { opacity:0; transform:scale(0.3); } to { opacity:1; transform:scale(1); } }
-        @keyframes wonPopupOut { from { opacity:1; transform:scale(1); } to { opacity:0; transform:scale(0.2); } }
-      `}</style>
-      <div
-        className="flex flex-col items-center gap-3 rounded-2xl px-10 py-6"
-        style={{
-          background: "linear-gradient(145deg, rgba(0,0,0,0.92), rgba(0,0,0,0.78))",
-          border: "2px solid rgba(168,85,247,0.4)",
-          boxShadow: "0 0 28px rgba(168,85,247,0.3), 0 8px 32px rgba(0,0,0,0.7)",
-          backdropFilter: "blur(10px)",
-          minWidth: 220,
-          animation,
-        }}
-      >
-        <p className="text-[15px] font-bold uppercase tracking-widest text-green-400 leading-none">Total Won</p>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-black text-white">{fmt(total)}</span>
-          <GemIcon size={22} />
-        </div>
-      </div>
     </div>
   );
 }
@@ -959,7 +899,6 @@ export default function Cases() {
               const firstNestedCase = (cases as any[]).find((nc: any) => String(nc.id) === String(firstNestedCaseId));
               setBonusCaseInfo(firstNestedCase ? { name: firstNestedCase.name, imageUrl: firstNestedCase.imageUrl } : null);
               setBonusReelIndices(new Set());
-              setPurpleBonusReelIndices(new Set());
               setNestedCaseBonusReelIndices(new Set(nestedResultIndices));
               setModalMode("bonus_case");
 
@@ -1033,7 +972,6 @@ export default function Cases() {
                 if (!isDemo) deltaBalance(nestedFinalWonItems.reduce((s, it) => s + (it.value ?? 0), 0));
                 setModalMode("result");
                 setBonusReelIndices(new Set());
-                setPurpleBonusReelIndices(new Set());
                 setNestedCaseBonusReelIndices(new Set());
                 setBonusCaseInfo(null);
                 if (!isDemo) refreshUser();
@@ -1046,7 +984,6 @@ export default function Cases() {
               if (!isDemo) deltaBalance(finalWonItems.reduce((s, it) => s + (it.value ?? 0), 0));
               setModalMode("result");
               setBonusReelIndices(new Set());
-              setPurpleBonusReelIndices(new Set());
               setNestedCaseBonusReelIndices(new Set());
               if (!isDemo) refreshUser();
             }
@@ -1108,7 +1045,6 @@ export default function Cases() {
     setWonItems([]);
     setModalMode("info");
     setBonusReelIndices(new Set());
-    setPurpleBonusReelIndices(new Set());
     setNestedCaseBonusReelIndices(new Set());
     setIsDemoSpin(false);
     resetReels();
@@ -1661,14 +1597,24 @@ export default function Cases() {
                                 {modalMode === "bonus_spin" && isNestedCase && (
                                   <div className="text-center text-[10px] font-bold animate-pulse mt-1 uppercase" style={{ color: "#fbbf24" }}>🎁 Super Summer!</div>
                                 )}
+                                {modalMode === "result" && wonItems[idx] && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="text-center mt-1 px-1"
+                                  >
+                                    <p className="text-[11px] font-semibold text-white/90 truncate leading-tight">{wonItems[idx].name}</p>
+                                    <div className="flex items-center justify-center gap-1 mt-0.5">
+                                      <span className="text-[11px] font-bold text-yellow-400">{fmt(wonItems[idx].value)}</span>
+                                      <GemIcon size={11} />
+                                    </div>
+                                  </motion.div>
+                                )}
                               </div>
                             );
                           })}
 
-                          {/* Total won — centered overlay across all columns */}
-                          {modalMode === "result" && wonItems.length > 0 && !isDemoSpin && (
-                            <TotalWonOverlay total={wonItems.reduce((s, i) => s + i.value, 0)} fmt={fmt} />
-                          )}
                         </div>
                       );
                     })()
@@ -1738,8 +1684,19 @@ export default function Cases() {
                               </>
                             )}
                           </div>
-                          {wonItems[idx] && (
-                            <WonPopup wonItem={wonItems[idx]} active={modalMode === "result"} />
+                          {modalMode === "result" && wonItems[idx] && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.25 }}
+                              className="text-center mt-2 px-2"
+                            >
+                              <p className="text-[13px] font-semibold text-white/90 truncate leading-tight">{wonItems[idx].name}</p>
+                              <div className="flex items-center justify-center gap-1 mt-0.5">
+                                <span className="text-[13px] font-bold text-yellow-400">{fmt(wonItems[idx].value)}</span>
+                                <GemIcon size={13} />
+                              </div>
+                            </motion.div>
                           )}
                           </div>
                         );
