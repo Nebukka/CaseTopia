@@ -166,7 +166,7 @@ router.get("/bot/pending-deposits", requireBotSecret, async (req: any, res) => {
 
     const deposits = pending.filter((t) =>
       t.type === "deposit" &&
-      (!t.expiresAt || t.expiresAt > now) &&
+      t.expiresAt !== null && t.expiresAt > now &&
       !t.botGrowId
     );
 
