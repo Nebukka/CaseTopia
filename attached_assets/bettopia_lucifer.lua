@@ -95,7 +95,9 @@ local function handle_deposit(bot, world, growId, userId)
     local amount = watch_inventory(bot, 120)
 
     if amount <= 0 then
-        print("[DEPOSIT] Timed out waiting for trade in " .. world)
+        print("[DEPOSIT] Timed out waiting for trade in " .. world .. " - cancelling")
+        api_post("/bot/cancel-deposit", "worldName=" .. world)
+        bot:warp("EXIT")
         claimed_worlds[world] = nil
         return
     end

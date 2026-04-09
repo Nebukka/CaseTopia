@@ -117,6 +117,42 @@ router.post("/bot/deposit-complete", requireBotSecret, async (req: any, res) => 
   }
 });
 
+// ── Bot: cancel/expire a deposit session ─────────────────────────────────────
+// Params: worldName  (body JSON or query string)
+// Marks the deposit as "failed" so the player can start a fresh one.
+router.post("/bot/cancel-deposit", requireBotSecret, async (req: any, res) => {
+  try {
+    const worldName = String(req.body?.worldName ?? req.query.worldName ?? "");
+    if (!worldName) {
+      res.status(400).json({ error: "worldName required" });
+      return;
+    }
+
+    const [tx] = await db.select()
+      .from(walletTransactionsTable)
+      .where(eq(walletTransactionsTable.worldName, worldName))
+      .limit(1);
+
+    if (!tx) {
+      res.status(404).json({ error: "No deposit session found for this world" });
+      return;
+    }
+    if (tx.status !== "pending") {
+      res.status(409).json({ error: "Deposit already processed" });
+      return;
+    }
+
+    await db.update(walletTransactionsTable)
+      .set({ status: "failed", completedAt: new Date() })
+      .where(eq(walletTransactionsTable.id, tx.id));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── Bot: get pending deposits ─────────────────────────────────────────────────
 // ?format=text  →  one line per deposit: worldName|growId|userId
 // (default)     →  JSON array
