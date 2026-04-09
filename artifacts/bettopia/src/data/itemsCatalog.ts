@@ -118,6 +118,7 @@ import darySeedSrc from "@assets/dary_seed_1775674857884.webp";
 import mutatedSeedSrc from "@assets/mutated_seed_1775674905453.webp";
 import skullLauncherSrc from "@assets/skull_launcher_1775674934198.webp";
 import teenyAngelWingsSrc from "@assets/teeny_angel_wings_1775747483643.webp";
+import fairyWingsSrc from "@assets/fairy_wings_1775747502366.webp";
 
 export interface CatalogItem {
   id: string;
@@ -960,6 +961,13 @@ export const ITEMS_CATALOG: CatalogItem[] = [
     imageUrl: teenyAngelWingsSrc,
     value: 0.05,
     color: "#e0e0e0",
+  },
+  {
+    id: "fairy_wings",
+    name: "Fairy Wings",
+    imageUrl: fairyWingsSrc,
+    value: 0.03,
+    color: "#f0abfc",
   },
 ];
 
