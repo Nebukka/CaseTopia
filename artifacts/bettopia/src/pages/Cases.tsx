@@ -16,7 +16,7 @@ import caseBattleSrc from "@assets/casebattle_1775523643333.png";
 import chestSrc from "@assets/treasure_chest_1775532728745.webp";
 import legendaryOrbSrc from "@assets/legendary_orb_1775536735371.webp";
 import bonusOrbIconSrc from "@assets/legendary_orb_1775538080736.webp";
-import purpleOrbBaseSrc from "@assets/legendary_orb_1775539381857.webp";
+
 import { GemIcon } from "../components/GemIcon";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { ITEMS_CATALOG, rarityFromChance, type CatalogItem } from "../data/itemsCatalog";
@@ -181,7 +181,6 @@ function ItemThumbnail({ item, size = "md" }: { item: CaseItem | CatalogItem; si
 }
 
 const GOLD_ORB_THRESHOLD = 3;    // ≤3% → gold bonus
-const PURPLE_ORB_THRESHOLD = 0.1; // ≤0.1% → purple ultra bonus
 
 // Gold orb — shown in filler when a ≤3% item is won
 const ORB_PLACEHOLDER_ITEM: CaseItem = {
@@ -192,17 +191,6 @@ const ORB_PLACEHOLDER_ITEM: CaseItem = {
   value: 0,
   chance: 0,
   color: "#fbbf24",
-};
-
-// Purple orb — shown in filler when a ≤0.1% item is won
-const PURPLE_ORB_PLACEHOLDER_ITEM: CaseItem = {
-  id: "__purple_orb__",
-  name: "???",
-  imageUrl: purpleOrbBaseSrc,
-  rarity: "legendary",
-  value: 0,
-  chance: 0,
-  color: "#a855f7",
 };
 
 // Chest placeholder — shown in filler when a nested case item is won
@@ -394,7 +382,6 @@ export default function Cases() {
   const [wonItems, setWonItems] = useState<CaseItem[]>([]);
   const [reelItemsPerReel, setReelItemsPerReel] = useState<CaseItem[][]>([]);
   const [bonusReelIndices, setBonusReelIndices] = useState<Set<number>>(new Set());
-  const [purpleBonusReelIndices, setPurpleBonusReelIndices] = useState<Set<number>>(new Set());
   const [nestedCaseBonusReelIndices, setNestedCaseBonusReelIndices] = useState<Set<number>>(new Set());
   const [bonusCaseInfo, setBonusCaseInfo] = useState<{ name: string; imageUrl: string } | null>(null);
   const [isDemoSpin, setIsDemoSpin] = useState(false);
@@ -740,7 +727,7 @@ export default function Cases() {
     setModalMode("info");
     setWonItems([]);
     if (c.items?.length) {
-      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(c.items); return it.chance <= PURPLE_ORB_THRESHOLD ? PURPLE_ORB_PLACEHOLDER_ITEM : it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
+      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(c.items); return it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
     }
   };
 
@@ -784,15 +771,15 @@ export default function Cases() {
     setSelectedCase(c);
     setWonItems([]);
     if (c.items?.length) {
-      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(c.items); return it.chance <= PURPLE_ORB_THRESHOLD ? PURPLE_ORB_PLACEHOLDER_ITEM : it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
+      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(c.items); return it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
     }
 
-    // Build filler from full pool — ≤0.1% → purple orb, ≤3% (incl. nested case) → gold orb, else real item
+    // Build filler from full pool — ≤3% (incl. nested case) → gold orb, else real item
     const perReel: CaseItem[][] = Array.from({ length: openCount }, () => {
       const items: CaseItem[] = [];
       for (let i = 0; i < ITEM_COUNT; i++) {
         const item = weightedRandom(c.items);
-        items.push(item.chance <= PURPLE_ORB_THRESHOLD ? PURPLE_ORB_PLACEHOLDER_ITEM : item.chance <= GOLD_ORB_THRESHOLD || (item as any).nestedCaseId ? ORB_PLACEHOLDER_ITEM : item);
+        items.push(item.chance <= GOLD_ORB_THRESHOLD || (item as any).nestedCaseId ? ORB_PLACEHOLDER_ITEM : item);
       }
       return items;
     });
@@ -819,15 +806,13 @@ export default function Cases() {
   const runReelAnimation = (c: Case, perReel: CaseItem[][], wonItemsList: CaseItem[], duration: number, isDemo: boolean) => {
     const isVertical = perReel.length > 1; // horizontal for 1 case, vertical columns for 2-4
 
-    // Inject item at WINNING_INDEX — nested case shows chest, purple orb for ≤0.1%, gold orb for ≤3%, real item otherwise
+    // Inject item at WINNING_INDEX — nested case shows chest, gold orb for ≤3%, real item otherwise
     const updated = perReel.map((items, idx) => {
       const newItems = [...items];
       const won = wonItemsList[idx];
-      newItems[WINNING_INDEX] = won.chance <= PURPLE_ORB_THRESHOLD
-        ? PURPLE_ORB_PLACEHOLDER_ITEM
-        : won.chance <= GOLD_ORB_THRESHOLD || (won as any).nestedCaseId
-          ? ORB_PLACEHOLDER_ITEM
-          : won;
+      newItems[WINNING_INDEX] = won.chance <= GOLD_ORB_THRESHOLD || (won as any).nestedCaseId
+        ? ORB_PLACEHOLDER_ITEM
+        : won;
       return newItems;
     });
     setReelItemsPerReel(updated);
@@ -872,18 +857,14 @@ export default function Cases() {
       stopTickMonitors();
 
       // ── Classify which reels triggered an orb bonus ──
-      const purpleIndices = new Set<number>(
-        wonItemsList.reduce<number[]>((acc, item, idx) => { if (item.chance <= PURPLE_ORB_THRESHOLD) acc.push(idx); return acc; }, [])
-      );
       const goldIndices = new Set<number>(
-        wonItemsList.reduce<number[]>((acc, item, idx) => { if (item.chance > PURPLE_ORB_THRESHOLD && item.chance <= GOLD_ORB_THRESHOLD) acc.push(idx); return acc; }, [])
+        wonItemsList.reduce<number[]>((acc, item, idx) => { if (item.chance <= GOLD_ORB_THRESHOLD) acc.push(idx); return acc; }, [])
       );
-      const allBonusIndices = new Set([...purpleIndices, ...goldIndices]);
-      // Bonus spin pools — rarePool includes nested case items so chest can land in bonus spin
-      const ultraRarePool = c.items.filter((item) => item.chance <= PURPLE_ORB_THRESHOLD);
-      const rarePool = c.items.filter((item) => item.chance > PURPLE_ORB_THRESHOLD && item.chance <= GOLD_ORB_THRESHOLD);
+      const allBonusIndices = goldIndices;
+      // Bonus spin pool — all items ≤3%
+      const rarePool = c.items.filter((item) => item.chance <= GOLD_ORB_THRESHOLD);
 
-      if (allBonusIndices.size > 0 && (rarePool.length > 0 || ultraRarePool.length > 0)) {
+      if (allBonusIndices.size > 0 && rarePool.length > 0) {
         // ── BONUS ROUND — show orb, then spin Summer Case ≤3% items ──
         const frozenReel = updated.map((items, idx) => {
           if (allBonusIndices.has(idx)) return items;
@@ -893,10 +874,8 @@ export default function Cases() {
         });
         setReelItemsPerReel(frozenReel);
         setBonusReelIndices(goldIndices);
-        setPurpleBonusReelIndices(purpleIndices);
         setNestedCaseBonusReelIndices(new Set());
 
-        if (purpleIndices.size > 0) playLightningStrike();
         playBonusSwoosh();
         setModalMode("bonus_orb");
 
@@ -913,9 +892,7 @@ export default function Cases() {
           const finalWonItems = [...wonItemsList];
           const bonusPerReel: CaseItem[][] = frozenReel.map((items, idx) => {
             if (!allBonusIndices.has(idx)) return items;
-            const pool = purpleIndices.has(idx)
-              ? (ultraRarePool.length ? ultraRarePool : c.items)
-              : (rarePool.length ? rarePool : c.items);
+            const pool = rarePool.length ? rarePool : c.items;
             const uniformPick = () => pool[Math.floor(Math.random() * pool.length)];
             const bonusItems: CaseItem[] = Array.from({ length: ITEM_COUNT }, uniformPick);
             // For real spins, use the server-determined item so recent bets matches what the user sees.
@@ -1094,13 +1071,13 @@ export default function Cases() {
     setSelectedCase(c);
     setWonItems([]);
     if (c.items?.length) {
-      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(c.items); return it.chance <= PURPLE_ORB_THRESHOLD ? PURPLE_ORB_PLACEHOLDER_ITEM : it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
+      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(c.items); return it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
     }
     const perReel: CaseItem[][] = Array.from({ length: openCount }, () => {
       const items: CaseItem[] = [];
       for (let i = 0; i < ITEM_COUNT; i++) {
         const item = weightedRandom(c.items);
-        items.push(item.chance <= PURPLE_ORB_THRESHOLD ? PURPLE_ORB_PLACEHOLDER_ITEM : item.chance <= GOLD_ORB_THRESHOLD || (item as any).nestedCaseId ? ORB_PLACEHOLDER_ITEM : item);
+        items.push(item.chance <= GOLD_ORB_THRESHOLD || (item as any).nestedCaseId ? ORB_PLACEHOLDER_ITEM : item);
       }
       return items;
     });
@@ -1145,7 +1122,7 @@ export default function Cases() {
     setIsDemoSpin(false);
     resetReels();
     if (selectedCase.items?.length) {
-      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(selectedCase.items); return it.chance <= PURPLE_ORB_THRESHOLD ? PURPLE_ORB_PLACEHOLDER_ITEM : it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
+      setStaticReel(Array.from({ length: 11 }, () => { const it = weightedRandom(selectedCase.items); return it.chance <= GOLD_ORB_THRESHOLD ? ORB_PLACEHOLDER_ITEM : it; }));
     }
   };
 
@@ -1630,9 +1607,8 @@ export default function Cases() {
                         <div style={{ display: "flex", gap: 28, justifyContent: "center", padding: "12px 20px", position: "relative" }}>
                           {reelItemsPerReel.map((reelItems, idx) => {
                             const isBonus = bonusReelIndices.has(idx);
-                            const isPurpleBonus = purpleBonusReelIndices.has(idx);
                             const isNestedCase = nestedCaseBonusReelIndices.has(idx);
-                            const lineColor = isPurpleBonus && modalMode === "bonus_spin" ? "#a855f7" : (isBonus || isNestedCase) && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
+                            const lineColor = (isBonus || isNestedCase) && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
                             return (
                               <div key={idx} style={{ flex: 1, minWidth: 0, maxWidth: 200, position: "relative" }}>
                                 {modalMode === "bonus_case" && bonusCaseInfo && isNestedCase ? (
@@ -1661,7 +1637,7 @@ export default function Cases() {
                                       {reelItems.map((item, i) => <VerticalReelItemBox key={i} item={item} height={vc.itemH} />)}
                                     </div>
                                     {/* Orb overlay — reel stays blurred behind, orb pops on top */}
-                                    {modalMode === "bonus_orb" && (isBonus || isNestedCase || isPurpleBonus) && (
+                                    {modalMode === "bonus_orb" && (isBonus || isNestedCase) && (
                                       <motion.div
                                         key={`orb-overlay-col-${idx}`}
                                         initial={{ opacity: 0 }}
@@ -1669,35 +1645,20 @@ export default function Cases() {
                                         transition={{ duration: 0.2 }}
                                         style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(1px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, borderRadius: 8 }}
                                       >
-                                        {isPurpleBonus ? (
-                                          <motion.img
-                                            key="purple-orb-col"
-                                            src={purpleOrbBaseSrc}
-                                            alt="Ultra Bonus Orb"
-                                            initial={{ scale: 0.4, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
-                                            style={{ width: 60, height: 60, objectFit: "contain", imageRendering: "pixelated", filter: "hue-rotate(240deg) saturate(1.8) drop-shadow(0 0 18px rgba(168,85,247,0.95))" }}
-                                          />
-                                        ) : (
-                                          <motion.img
-                                            key="gold-orb-col"
-                                            src={legendaryOrbSrc}
-                                            alt="Bonus Orb"
-                                            initial={{ scale: 0.4, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
-                                            style={{ width: 60, height: 60, objectFit: "contain", imageRendering: "pixelated", filter: "drop-shadow(0 0 18px rgba(251,191,36,0.9))" }}
-                                          />
-                                        )}
+                                        <motion.img
+                                          key="gold-orb-col"
+                                          src={legendaryOrbSrc}
+                                          alt="Bonus Orb"
+                                          initial={{ scale: 0.4, opacity: 0 }}
+                                          animate={{ scale: 1, opacity: 1 }}
+                                          transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
+                                          style={{ width: 60, height: 60, objectFit: "contain", imageRendering: "pixelated", filter: "drop-shadow(0 0 18px rgba(251,191,36,0.9))" }}
+                                        />
                                       </motion.div>
                                     )}
                                   </div>
                                 )}
-                                {modalMode === "bonus_spin" && isPurpleBonus && (
-                                  <div className="text-center text-[10px] font-bold animate-pulse mt-1 uppercase" style={{ color: "#c084fc" }}>⚡ Ultra!</div>
-                                )}
-                                {modalMode === "bonus_spin" && isNestedCase && !isPurpleBonus && (
+                                {modalMode === "bonus_spin" && isNestedCase && (
                                   <div className="text-center text-[10px] font-bold animate-pulse mt-1 uppercase" style={{ color: "#fbbf24" }}>🎁 Super Summer!</div>
                                 )}
                               </div>
@@ -1716,9 +1677,8 @@ export default function Cases() {
                     <>
                       {reelItemsPerReel.map((reelItems, idx) => {
                         const isBonus = bonusReelIndices.has(idx);
-                        const isPurpleBonus = purpleBonusReelIndices.has(idx);
                         const isNestedCase = nestedCaseBonusReelIndices.has(idx);
-                        const lineColor = isPurpleBonus && modalMode === "bonus_spin" ? "#a855f7" : (isBonus || isNestedCase) && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
+                        const lineColor = (isBonus || isNestedCase) && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
                         return (
                           <div key={idx} style={{ position: "relative" }}>
                           <div style={{ position: "relative", height: 168, overflow: "hidden" }}>
@@ -1756,7 +1716,7 @@ export default function Cases() {
                                   {reelItems.map((item, i) => <ReelItemBox key={i} item={item} rowHeight={168} />)}
                                 </div>
                                 {/* Orb overlay — blurs reel behind, pops orb on top */}
-                                {modalMode === "bonus_orb" && (isBonus || isNestedCase || isPurpleBonus) && (
+                                {modalMode === "bonus_orb" && (isBonus || isNestedCase) && (
                                   <motion.div
                                     key={`orb-overlay-${idx}`}
                                     initial={{ opacity: 0 }}
@@ -1764,27 +1724,15 @@ export default function Cases() {
                                     transition={{ duration: 0.2 }}
                                     style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(1px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20 }}
                                   >
-                                    {isPurpleBonus ? (
-                                      <motion.img
-                                        key="purple-orb"
-                                        src={purpleOrbBaseSrc}
-                                        alt="Ultra Bonus Orb"
-                                        initial={{ scale: 0.4, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
-                                        style={{ width: 80, height: 80, objectFit: "contain", imageRendering: "pixelated", filter: "hue-rotate(240deg) saturate(1.8) drop-shadow(0 0 22px rgba(168,85,247,0.95)) drop-shadow(0 0 44px rgba(168,85,247,0.5))" }}
-                                      />
-                                    ) : (
-                                      <motion.img
-                                        key="gold-orb"
-                                        src={legendaryOrbSrc}
-                                        alt="Bonus Orb"
-                                        initial={{ scale: 0.4, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
-                                        style={{ width: 80, height: 80, objectFit: "contain", imageRendering: "pixelated", filter: "drop-shadow(0 0 20px rgba(251,191,36,0.9)) drop-shadow(0 0 40px rgba(251,191,36,0.5))" }}
-                                      />
-                                    )}
+                                    <motion.img
+                                      key="gold-orb"
+                                      src={legendaryOrbSrc}
+                                      alt="Bonus Orb"
+                                      initial={{ scale: 0.4, opacity: 0 }}
+                                      animate={{ scale: 1, opacity: 1 }}
+                                      transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.05 }}
+                                      style={{ width: 80, height: 80, objectFit: "contain", imageRendering: "pixelated", filter: "drop-shadow(0 0 20px rgba(251,191,36,0.9)) drop-shadow(0 0 40px rgba(251,191,36,0.5))" }}
+                                    />
                                   </motion.div>
                                 )}
                               </>
