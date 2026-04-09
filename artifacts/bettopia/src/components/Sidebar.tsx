@@ -29,6 +29,7 @@ const CHAT_EMOJIS: { code: string; src: string; label: string }[] = [
   { code: ":sad:", src: "/emojis/sad.webp", label: "Sad" },
   { code: ":exhausted:", src: "/emojis/exhausted.png", label: "Exhausted" },
   { code: ":devil:", src: "/emojis/devil.png", label: "Devil" },
+  { code: ":sleepy:", src: "/emojis/sleepy.webp", label: "Sleepy" },
   { code: ":heart:", src: "/emojis/heart.webp", label: "Heart" },
   { code: ":lucky:", src: "/emojis/lucky.png", label: "Lucky" },
 ];
