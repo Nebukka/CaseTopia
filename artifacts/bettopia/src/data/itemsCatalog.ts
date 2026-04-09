@@ -124,6 +124,7 @@ import darkAuroraWingsSrc from "@assets/dark_aurora_wings_1775747667384.webp";
 import auroraWingsSrc from "@assets/aurora_wings_1775747682423.webp";
 import aquaWingsSrc from "@assets/aqua_wings_1775747694291.webp";
 import bloodmoonWingsSrc from "@assets/bloodmoon_wings_1775747771442.webp";
+import royalBloodmoonWingsSrc from "@assets/royal_bloodmoon_wings_1775747798191.webp";
 
 export interface CatalogItem {
   id: string;
@@ -1008,6 +1009,13 @@ export const ITEMS_CATALOG: CatalogItem[] = [
     imageUrl: bloodmoonWingsSrc,
     value: 250,
     color: "#dc2626",
+  },
+  {
+    id: "royal_bloodmoon_wings",
+    name: "Royal Bloodmoon Wings",
+    imageUrl: royalBloodmoonWingsSrc,
+    value: 350,
+    color: "#991b1b",
   },
 ];
 
