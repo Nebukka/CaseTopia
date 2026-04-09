@@ -578,7 +578,10 @@ export function DailyCaseModal({ tierNum, tierLabel, tierColor, caseId, claimed 
                   className="text-center"
                 >
                   <p className="text-sm font-semibold text-white/90 leading-tight">{wonItem.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{wonItem.value} 💎</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center justify-center gap-1">
+                    {wonItem.value}
+                    <img src={dlSrc} alt="DL" style={{ width: 14, height: 14, objectFit: "contain", imageRendering: "pixelated" }} />
+                  </p>
                 </motion.div>
               </motion.div>
             )}
