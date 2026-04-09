@@ -21,6 +21,7 @@ interface SidebarProps {
 
 const CHAT_EMOJIS: { code: string; src: string; label: string }[] = [
   { code: ":laugh:", src: "/emojis/laugh.png", label: "Laugh" },
+  { code: ":mlg:", src: "/emojis/mlg.png", label: "MLG" },
 ];
 
 function renderMessageWithMentions(
