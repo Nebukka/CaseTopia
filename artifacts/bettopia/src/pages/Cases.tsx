@@ -1568,8 +1568,8 @@ export default function Cases() {
                           return (
                             <React.Fragment key={idx}>
                               {idx > 0 && (
-                                <div style={{ width: 18, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  <div style={{ width: 9, height: 9, background: "#a78bfa", transform: "rotate(45deg)", opacity: 0.75 }} />
+                                <div style={{ width: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <div style={{ width: 20, height: 8, background: "rgba(255,255,255,0.18)", clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" }} />
                                 </div>
                               )}
                               <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
@@ -1605,9 +1605,9 @@ export default function Cases() {
                               return (
                                 <React.Fragment key={idx}>
                                   {idx > 0 && (
-                                    /* Diamond separator between columns */
-                                    <div style={{ width: 18, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, position: "relative" }}>
-                                      <div style={{ width: 9, height: 9, background: triColor, transform: "rotate(45deg)", opacity: 0.75 }} />
+                                    /* Lozenge separator between columns */
+                                    <div style={{ width: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, position: "relative" }}>
+                                      <div style={{ width: 20, height: 8, background: "rgba(255,255,255,0.18)", clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" }} />
                                     </div>
                                   )}
                                   <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
