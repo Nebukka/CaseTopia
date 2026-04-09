@@ -1598,6 +1598,10 @@ export default function Cases() {
                         const lineColor = (isBonus || isNestedCase) && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
                         return (
                           <div key={idx} style={{ position: "relative" }}>
+                            {/* Top triangle pointing down */}
+                            <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: `14px solid ${lineColor}`, zIndex: 100, pointerEvents: "none" }} />
+                            {/* Bottom triangle pointing up */}
+                            <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderBottom: `14px solid ${lineColor}`, zIndex: 100, pointerEvents: "none" }} />
                             <div style={{ position: "relative", height: 168, overflow: "hidden" }}>
                               {modalMode === "bonus_case" && bonusCaseInfo ? (
                                 <motion.div
@@ -1621,7 +1625,6 @@ export default function Cases() {
                                   </div>
                                   <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 120, background: `linear-gradient(to right, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
                                   <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 120, background: `linear-gradient(to left, ${REEL_BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-                                  <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 3, marginLeft: -1, backgroundColor: lineColor, zIndex: 99, pointerEvents: "none" }} />
                                   <div
                                     ref={(el) => { reelRefs.current[idx] = el; }}
                                     style={{ display: "flex", gap: 0, height: "100%", paddingLeft: "calc(50% - 48px)" }}
