@@ -36,6 +36,7 @@ const CHAT_EMOJIS: { code: string; src: string; label: string }[] = [
   { code: ":thumbsdown:", src: "/emojis/thumbsdown.webp", label: "Thumbs Down" },
   { code: ":worldlock:", src: "/emojis/worldlock.webp", label: "World Lock" },
   { code: ":dl:", src: "/emojis/dl.webp", label: "Diamond Lock" },
+  { code: ":bgl:", src: "/emojis/bgl.webp", label: "Blue Gem Lock" },
 ];
 
 function renderMessageWithMentions(
