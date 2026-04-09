@@ -1,0 +1,226 @@
+[33mfe14599[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmy-upload[m[33m, [m[1;32mmain[m[33m)[m Initial commit
+[33m3a1ab03[m Add new rare items to the item catalog for user betting
+[33m5055084[m Add new valuable items to the game's collectible catalog
+[33m036e4ad[m Add new valuable items to the game's catalog for players
+[33m5e773a3[m Add new valuable items to the game's collectible catalog
+[33m7cf81f7[m Add Neptune's Trident item to the game catalog and assets
+[33mcaa6022[m Add Wiggly Worm item to the game catalog and asset
+[33m38dc402[m Add Zodiac Wings to the item catalog and its image asset
+[33m5d2ffed[m Add Chimera Wings and other cosmetic items to the item catalog
+[33m2ea9495[m Add Devil Wings to the item catalog and associated asset
+[33meefb5e9[m Add Diamond Wings item to the item catalog for the game
+[33mbe3eff7[m Add new cosmetic items to the in-game catalog
+[33m14fc0a5[m Add Golden Heart Crystal to the item catalog for the website
+[33mfa492c0[m Add Angel Wings item to the item catalog
+[33m5bb6d04[m Add new valuable items to the in-game shop and item catalog
+[33m30dd6c9[m Add purple Astro Shades item to the shop and catalog
+[33m1db9960[m Add new items to the in-game item catalog for users
+[33m2d4d270[m Add new cosmetic items to the item catalog and assets
+[33m264bb40[m Add new items to the in-game catalog for player trading and collection
+[33m430f2f7[m Add new valuable items to the game's item catalog
+[33mc5611ca[m Add new valuable item and update item catalog with its details
+[33m91ac899[m Improve bonus round display by showing all possible filler items
+[33m8cf10fe[m Tighten case creation to allow for exact drop rate sums
+[33m5355228[m Tighten case drop rate precision to prevent exact 100% sums
+[33m8790e38[m Add new items to the in-game shop inventory and display them
+[33me9090f7[m Add new items to the item catalog for the website
+[33m87f0f93[m Add new valuable items to the item catalog for the gambling website
+[33m2251b90[m Add new rare items to the in-game item catalog
+[33m301181c[m Add a new dragon-themed item to the virtual catalog
+[33m684aded[m Add new valuable items to the in-game shop catalog
+[33m2a6b450[m Add Money Aura item to the in-game catalog with its details
+[33m3068396[m Add new premium items to the item catalog for the website
+[33m1e8bf02[m Add new cosmetic items to the in-game catalog for players
+[33m75289a5[m Add Black Aura item with its image and properties to the catalog
+[33m9e7e0f5[m Add Blue Aura item to the item catalog and its image asset
+[33m3be43e3[m Add Golden Aura item to the game catalog for players to collect
+[33m6641f73[m Add new items to the online store to expand purchasing options
+[33m74d4c00[m Add new valuable items to the item catalog for use in betting cases
+[33m05490e3[m Add new valuable items to the game's catalog for players to collect and trade
+[33m188b4ff[m Add new gem block items to the item catalog
+[33m07de827[m Add Crystal Block and Emerald Block items to the in-game catalog
+[33m28b8890[m Add Emerald Block as a new custom item to the item catalog
+[33m132bc85[m Add a way to force the rarest item drop from a case
+[33m113a84c[m Add search for community cases and display case opening counts
+[33mc9e28bc[m Adjust case opening sound to be slightly lower pitch
+[33m5696ec9[m Add a purple orb and lightning effect for ultra rare items
+[33md8579e6[m Improve case opening sound to be higher quality and richer
+[33mf70356b[m Prevent multiple sounds when opening cases simultaneously
+[33m747b1a4[m Adjust the sound effect for case interactions to be higher pitched
+[33m4aacae0[m Adjust case opening sound to a low-pitched click
+[33m4f4a5a0[m Make bonus round sounds smoother and quieter
+[33med9986e[m Make case opening sound softer and smoother
+[33m18fbe8e[m Add ability to tip other users DLs directly from their profile
+[33m2bdb3aa[m Add a dramatic swoosh sound effect for bonus orb reveals
+[33m02a478b[m Soften the sound effects to be less loud and more subtle
+[33mae4e144[m Remove the open battles section from the case battles page
+[33m937e5ef[m Add satisfying click sound effects to case opening animations
+[33m652c92e[m Update orb drop rate and display logic for rare items
+[33m1b68393[m Add a demo spin feature for trying out cases without using real balance
+[33m615089b[m Improve bonus round logic for selective reel animations and outcomes
+[33m1f0b26e[m Hide rare items during initial case opening spins
+[33m7beabd4[m Adjust item glow effects to emanate only from the bottom
+[33mb01842d[m Enhance case item rarity display with glowing effects
+[33mb60cc57[m Remove smoke effects from less rare case item displays
+[33m9e80e9e[m Add a special bonus spin for rare item drops
+[33mdaab8b3[m Add smoke effects to case content items and remove from spin
+[33ma594e2f[m Add a subtle smoke effect to item rarity borders
+[33mf2d7c81[m Introduce a bonus round with special item drops to case openings
+[33m9749a48[m Enhance item glow and rarity border on case contents and reel items
+[33mabd2fe9[m Display all daily race leaderboard ranks with prizes
+[33mef323d2[m Add all-time profit and loss information to user profiles
+[33mbcce5c6[m Reduce item glow intensity across the cases page
+[33mf6dca56[m Improve daily race card by adding live countdown and reliable scrolling
+[33m09d7a10[m Make items with 1% pull chance or less legendary rarity
+[33m206881b[m Update case display to show static reel preview
+[33me0b6c7a[m Add functionality to view user profiles from the chat
+[33mc3de52b[m Update chat messages to show current user profile pictures dynamically
+[33ma036eb3[m Show user profile pictures next to their names in the chat
+[33m77cf3ca[m Add ability to feature an item on the case logo
+[33m402cc86[m Update balance display font to Open Sans
+[33mc29e0b1[m Update balance display font to Arial
+[33m1780773[m Make balance numbers evenly spaced for a stable display
+[33m28f09b6[m Make chest icons display the chosen color vibrantly
+[33mb366704[m Allow users to upload and manage their profile pictures
+[33m2e452ac[m Soften the glow on the "Welcome to CaseTopia" text
+[33me91fdf3[m Show custom case icons in user's case lists
+[33mfcafc3f[m Update case creation interface to improve color selection experience
+[33m6602bb5[m Add a purple glow to the website's welcome message
+[33mfdf5a76[m Update game win messages to show total winnings instead of just profit
+[33md1064c4[m Animate balance changes for a smoother betting experience
+[33m6d89df6[m Add ability to customize case logo colors when creating new cases
+[33me511a6e[m Update games to reflect betting and winning amounts on user balance
+[33m94d71de[m Update balance display after opening cases immediately
+[33mda9092b[m Update how currency balances are displayed to show decimals
+[33mf7889a2[m Remove bomb icon from original games section and fix number formatting
+[33m0842dcb[m Fix currency conversion for case prices and item values
+[33m4ddb2b4[m Make opening cases start the animation immediately on the card view
+[33m5427ed7[m Update currency display to automatically convert case and item prices
+[33mfbe379c[m Make smoke effects drift faster across the website
+[33m9c8c929[m Improve homepage smoke effect for clearer visual appearance
+[33m0533e4a[m Add currency switching and conversion functionality for betting
+[33m963e6c3[m Increase visibility of atmospheric smoke effects
+[33m93b08d5[m Fix crash game to prevent game from getting stuck
+[33mdcf8bd1[m Add slow-moving purple smoke effect to the home page hero section
+[33m423f6f8[m Reduce cooldown between crash game rounds
+[33m03da4d0[m Remove glowing effect from welcome message on home page
+[33ma01520c[m Ensure crash game runs continuously in the background
+[33m771bbaa[m Add and adjust glowing text effects on website title
+[33m3003bd9[m Update website navigation to streamline the user experience
+[33ma640619[m Add glowing text effect to home page title
+[33m584a44e[m Automate the crash game to run continuously with new betting mechanics
+[33md6d4958[m Update website branding from BetTopia to CaseTopia
+[33m6c6c8c3[m Replace diamond emojis with DL icons in game interfaces
+[33m13b59ad[m Make cash out notifications much larger for users to see
+[33m11896e7[m Replace bomb icons with naval mine images in the Mines game
+[33m34548e9[m Update cashout display to use DL icon instead of diamond emoji
+[33mfdd2e26[m Update error message for hitting a trap in the Tower game
+[33m7f5340b[m Reveal trap locations in the Tower game after safely passing a row
+[33m1c978a3[m Update recent bets display with new icon
+[33m5d7f663[m Improve the Tower game's appearance and usability
+[33m0aac160[m Update the Tower game to reveal traps and remove the start button
+[33mb305730[m Add a prompt to try other games on the case details page
+[33m32bb799[m Move game shortcut buttons to appear after case contents
+[33me0e96b2[m Update game shortcuts on case detail page to match home page style
+[33mfc16adf[m Add "OWNER" badge to Cylax's name in chat
+[33md2ef5ba[m Adjust chat message and timestamp text sizes for better readability
+[33m391cebd[m Increase chat message text size by 1.5x
+[33m15c5928[m Make chat text and timestamps larger for better readability
+[33mfb7ff2e[m Increase the size of the timestamp in the chatbox
+[33m15157d3[m Add Cases game to original games section and adjust layout
+[33m378efe7[m Show the time each message was sent in the chat
+[33m2e3239e[m Revert game card styles to original design while retaining new icons
+[33m19c9322[m Swap the positions of the daily race and recent bets sections
+[33m82e82f3[m Update home page to better showcase games and add text shadow
+[33md906702[m Add a shadow effect to the main heading on the home page
+[33mb4ee8cb[m Add game shortcut buttons to the case detail view
+[33m7841652[m Update case detail view layout and styling for better user experience
+[33m972e8a2[m Increase the size and intensity of item glows during case opening
+[33m601d019[m Improve case detail layout to match reference design
+[33mf854bb3[m Improve item display with colorful glow effects
+[33m8199787[m Add ability to open multiple cases at once and center case details
+[33m530d4cd[m Keep top bar and chat visible when opening cases and playing games
+[33mbb6116d[m Group identical cases and add quantity controls in battle creation
+[33mabf26e7[m Redesign the case opening experience to match the reference website
+[33mce222c8[m Improve case selection in battle creation for better user experience
+[33me7a9e88[m Show item icons in case battles
+[33m8a3ec22[m Add new item and adjust price display in item previews
+[33mbfaf41a[m Hide item prices during case spinning animations
+[33m17d7f86[m Add smooth scrolling to the daily race section from the home page
+[33m976f285[m Adjust the position of the third character element
+[33mf99b691[m Reverse the order of the first two characters on the home page
+[33m0ded3df[m Swap the positions of the first two characters in the daily race display
+[33mc784704[m Adjust the position of decorative characters on the homepage
+[33mdd156fe[m Add a third character to the racing display
+[33m3a7f9fc[m Add a second character image to the daily race header
+[33mfe29747[m Adjust character's position on the home page slightly
+[33m1f46eab[m Adjust character positioning in the daily race header to the left
+[33mf38407d[m Adjust character image position in the daily race header
+[33mbc12a19[m Adjust character image position in daily race header
+[33m3da0e38[m Add a character image to the daily race header with specific cropping
+[33m55c8fa5[m Update daily race table to use new diamond lock icon
+[33m656246b[m Add a daily race leaderboard to the website
+[33m8a8aecd[m Show more recent bets on the home screen
+[33m4cf62b6[m Update live chat header to show online player count
+[33mf5b4340[m Update chat to show online players and remove gem rain
+[33m7d824ee[m Update game card icons to show relevant images
+[33m8e19691[m Update the Case Battles icon on the home screen to a new image
+[33me2d710e[m Replace bouncing square with a slowly floating character on the home screen
+[33m751e443[m Add a case selection system with categorized tabs for battles
+[33m67de198[m Remove glow effect from the center line in the case opening animation
+[33ma6c8ba0[m Make the center line visible during case openings
+[33me797ea9[m Make the center line indicator always visible on the cases page
+[33m4f42e47[m Update case opening display with a central line indicator
+[33m6a0fbd1[m Improve the case opening animation with a new visual indicator and smoother spinning
+[33m7d8e96e[m Add the Nightmare Devil Wings item with a high value
+[33m08503d2[m Add Rayman's Fist as a high-value item to the cases
+[33m52023ce[m Update website logo with a new font and colors
+[33mde57b78[m Add ability to favourite cases and view a list of favourites
+[33m00dd93d[m Add new battle types and redesign the battle creation interface
+[33m2e698ca[m Adjust website's house edge to 6% for all case openings
+[33mc758b2d[m Adjust case pricing to implement a 9% house edge
+[33mb65a88a[m Correctly price cases to ensure a house edge
+[33m0afd544[m Update home screen to greet logged-in users by name
+[33m4175393[m Adjust case pricing to accurately reflect item values
+[33m1e3c935[m Remove display of predicted payout in battle creation
+[33m238f281[m Remove prize pool display when creating a shared battle
+[33m591325d[m Add a shared option for case battles where prizes are split
+[33m1b7c568[m Improve visibility of community case creation requirements
+[33m6cc6293[m Center the waiting screen during player battles
+[33mffb790e[m Add recent bets display to home page and track all game bets
+[33m45cc08c[m Center and enlarge battle elements, removing stray borders
+[33m3086cb2[m Adjust battle screen layout and reel display for better user experience
+[33m50c1083[m Improve the battle screen layout and visual elements
+[33m22d1bc9[m Align battle reels spacing with waiting screen layout
+[33me09ac23[m Add automatic deletion of old completed or cancelled battles
+[33m8669c3a[m Update website font to Exo 2 for a modern look
+[33m27a35af[m Update website font to Outfit for a cleaner look
+[33m52a6e0a[m Update website font to Gibson for a new look
+[33m872cf1d[m Apply Courier Bold font globally and fix case display issues
+[33m7cee2ad[m Ensure newly created cases appear in "My Cases"
+[33m721284c[m Add functionality for users to view and delete their created cases
+[33m9aaf2d1[m Make the case opening reel more visible with a prominent stop indicator
+[33m2543425[m Add World Lock item and update item rarity display
+[33mbfe2042[m Update item rarity and glow colors based on drop rate
+[33m1ba3c7f[m Update item catalog and case creation to remove rarity selection
+[33m43da20c[m Add Dragon Hand item and update its visual representation
+[33me85af9a[m Update the price of dirt blocks to be much lower
+[33maf7d144[m Update dirt block image and increase item catalog size
+[33m4befba0[m Add ability for users to create their own custom item cases
+[33m5eb44aa[m Limit recent battle results to one minute
+[33m69e0134[m Replace gem emoji with a custom gem icon across the application
+[33m39f28a8[m Make spinning reels smaller to match waiting screen visuals
+[33mcce9d6b[m Improve battle creation and viewing with new copy and modify options
+[33mf3eed1a[m Update recent results to only show completed battles
+[33m5d2d65b[m Add functionality for users to leave battles before they start
+[33m2699da4[m Add ability to add bots for free during battle creation
+[33md7f6bab[m Add option to include bots in battle teams
+[33mfcf138b[m Add new game modes and update battle screen visuals
+[33m9f2e662[m Published your App
+[33m2698a44[m Add ability to spectate ongoing battles and view past results
+[33md49a1bf[m Add a dynamic battle screen and collapsible chat sidebar
+[33m7f038a2[m Improve real-time updates and display of battles and chat
+[33mdd5857a[m Published your App
+[33ma407300[m Update game name and add case opening improvements
+[33med75cf9[m Add authentication and game features for the gambling website
+[33m4d26b95[m Initial commit

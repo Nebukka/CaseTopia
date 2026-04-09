@@ -1,0 +1,92 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "kNS4d-iqyu6F0dYJFazA7"
+uri = "file://artifacts/bettopia/public/chests/tier1.png"
+type = "image"
+title = "tier1 ugly wooden chest"
+
+[[generated]]
+id = "2EfiUSDdjBkjpGzFxkB5c"
+uri = "file://artifacts/bettopia/public/chests/tier2.png"
+type = "image"
+title = "tier2 simple wooden chest"
+
+[[generated]]
+id = "x8JMgTTLFAJUfCyBUN-EW"
+uri = "file://artifacts/bettopia/public/chests/tier3.png"
+type = "image"
+title = "tier3 copper chest"
+
+[[generated]]
+id = "iZtyVoBDAjWSRqEHKx5dj"
+uri = "file://artifacts/bettopia/public/chests/tier4.png"
+type = "image"
+title = "tier4 bronze chest"
+
+[[generated]]
+id = "WivivxzlK6rWhq6fjB1HX"
+uri = "file://artifacts/bettopia/public/chests/tier5.png"
+type = "image"
+title = "tier5 iron silver chest"
+
+[[generated]]
+id = "NZIZNIpD-7o0wt62CnvNI"
+uri = "file://artifacts/bettopia/public/chests/tier6.png"
+type = "image"
+title = "tier6 silver chest"
+
+[[generated]]
+id = "RZbC5emCagW-7kciX9P8o"
+uri = "file://artifacts/bettopia/public/chests/tier7.png"
+type = "image"
+title = "tier7 enchanted chest"
+
+[[generated]]
+id = "NCyHxR6o24Fe6jZRkh1-G"
+uri = "file://artifacts/bettopia/public/chests/tier8.png"
+type = "image"
+title = "tier8 gold chest"
+
+[[generated]]
+id = "2dPgIkpCjc8p440osl5O7"
+uri = "file://artifacts/bettopia/public/chests/tier9.png"
+type = "image"
+title = "tier9 epic gold chest"
+
+[[generated]]
+id = "vcj_e8PgsE3rz7ekSOke-"
+uri = "file://artifacts/bettopia/public/chests/tier10.png"
+type = "image"
+title = "tier10 celestial chest"
+
+[[generated]]
+id = "lpc0I5JP74BnqoSd74y0W"
+uri = "file://artifacts/bettopia/public/chests/tier11.png"
+type = "image"
+title = "tier11 astral chest"
+
+[[generated]]
+id = "47JoVi-sKjt_C_cj0pwFq"
+uri = "file://artifacts/bettopia/public/chests/tier12.png"
+type = "image"
+title = "tier12 crystal chest"
+
+[[generated]]
+id = "FCqnYjik_XeaNEzokuCZ1"
+uri = "file://artifacts/bettopia/public/chests/tier13.png"
+type = "image"
+title = "tier13 divine chest"
+
+[[generated]]
+id = "Mk0Pzh2YOBKSX2NCh7Lbh"
+uri = "file://artifacts/bettopia/public/chests/tier14.png"
+type = "image"
+title = "tier14 mythic chest"
+
+[[generated]]
+id = "zepmr5f-rcwTGgobJZcQp"
+uri = "file://artifacts/bettopia/public/chests/tier15.png"
+type = "image"
+title = "tier15 ultimate chest"
