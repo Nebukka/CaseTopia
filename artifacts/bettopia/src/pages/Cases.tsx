@@ -1557,12 +1557,12 @@ export default function Cases() {
                 (() => {
                   const vc = getVConfig(openCount);
                   return (
-                    <div style={{ position: "relative" }}>
+                    <div style={{ position: "relative", height: vc.containerH }}>
                       {/* Left inward triangle → */}
                       <div style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 0, height: 0, borderTop: "11px solid transparent", borderBottom: "11px solid transparent", borderLeft: "13px solid #a78bfa", zIndex: 100, pointerEvents: "none" }} />
                       {/* Right inward triangle ← */}
                       <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", width: 0, height: 0, borderTop: "11px solid transparent", borderBottom: "11px solid transparent", borderRight: "13px solid #a78bfa", zIndex: 100, pointerEvents: "none" }} />
-                      <div style={{ display: "flex" }}>
+                      <div style={{ display: "flex", height: "100%" }}>
                         {Array.from({ length: openCount }).map((_, idx) => {
                           const item = staticReel[idx % staticReel.length] ?? staticReel[0];
                           return (
@@ -1593,12 +1593,12 @@ export default function Cases() {
                       const anyBonus = bonusReelIndices.size > 0 || nestedCaseBonusReelIndices.size > 0;
                       const triColor = anyBonus && modalMode === "bonus_spin" ? "#fbbf24" : "#a78bfa";
                       return (
-                        <div style={{ position: "relative" }}>
+                        <div style={{ position: "relative", height: vc.containerH }}>
                           {/* Left inward triangle → */}
                           <div style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 0, height: 0, borderTop: "11px solid transparent", borderBottom: "11px solid transparent", borderLeft: `13px solid ${triColor}`, zIndex: 100, pointerEvents: "none" }} />
                           {/* Right inward triangle ← */}
                           <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", width: 0, height: 0, borderTop: "11px solid transparent", borderBottom: "11px solid transparent", borderRight: `13px solid ${triColor}`, zIndex: 100, pointerEvents: "none" }} />
-                          <div style={{ display: "flex" }}>
+                          <div style={{ display: "flex", height: "100%" }}>
                             {reelItemsPerReel.map((reelItems, idx) => {
                               const isBonus = bonusReelIndices.has(idx);
                               const isNestedCase = nestedCaseBonusReelIndices.has(idx);
