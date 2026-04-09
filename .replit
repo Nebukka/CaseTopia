@@ -26,6 +26,10 @@ author = "agent"
 task = "workflow.run"
 args = "API Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BetTopia Frontend"
+
 [[workflows.workflow]]
 name = "API Server"
 author = "agent"
@@ -37,6 +41,18 @@ waitForPort = 8080
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "BetTopia Frontend"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "BASE_PATH=/ PORT=5173 pnpm --filter @workspace/bettopia run dev"
+waitForPort = 5173
 
 [agent]
 stack = "PNPM_WORKSPACE"
