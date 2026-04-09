@@ -20,17 +20,19 @@ router.post("/wallet/deposit", requireAuth, async (req: any, res) => {
     }
 
     const worldName = generateWorldName();
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
 
     const [tx] = await db.insert(walletTransactionsTable).values({
       userId: req.user.id,
       growId: growId.trim(),
       type: "deposit",
-      amountDl: 0, // filled in when bot confirms
+      amountDl: 0,
       status: "pending",
       worldName,
+      expiresAt,
     }).returning();
 
-    res.json({ transactionId: tx.id, worldName });
+    res.json({ transactionId: tx.id, worldName, expiresAt: expiresAt.toISOString() });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

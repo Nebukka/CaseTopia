@@ -2,18 +2,74 @@ import React, { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Wallet, Loader2, CheckCircle2, Copy, Clock } from "lucide-react";
+import { Wallet, Loader2, CheckCircle2, Copy, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../contexts/AuthContext";
 import dlSrc from "@assets/dl_1775514218033.webp";
 
 type Tab = "deposit" | "withdraw";
-type DepositStep = "form" | "loading" | "ready" | "waiting_bot" | "bot_ready";
+type DepositStep = "form" | "loading" | "waiting_bot" | "bot_ready" | "expired";
 type WithdrawStep = "form" | "loading" | "done";
+
+const STORAGE_KEY = "bettopia_deposit_session";
+
+interface DepositSession {
+  txId: number;
+  worldName: string;
+  expiresAt: string;
+  growId: string;
+}
 
 interface WalletModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+function loadSession(): DepositSession | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const s: DepositSession = JSON.parse(raw);
+    if (new Date(s.expiresAt) <= new Date()) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(s: DepositSession) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+}
+
+function clearSession() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+function useCountdown(expiresAt: string | null) {
+  const [remaining, setRemaining] = useState<number>(0);
+
+  useEffect(() => {
+    if (!expiresAt) { setRemaining(0); return; }
+    const tick = () => {
+      const ms = new Date(expiresAt).getTime() - Date.now();
+      setRemaining(Math.max(0, ms));
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  return remaining;
+}
+
+function formatCountdown(ms: number) {
+  const total = Math.ceil(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 export function WalletModal({ open, onOpenChange }: WalletModalProps) {
@@ -23,8 +79,7 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
 
   const [growId, setGrowId] = useState("");
   const [depositStep, setDepositStep] = useState<DepositStep>("form");
-  const [depositWorld, setDepositWorld] = useState("");
-  const [depositTxId, setDepositTxId] = useState<number | null>(null);
+  const [depositSession, setDepositSession] = useState<DepositSession | null>(null);
   const [depositBot, setDepositBot] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -32,15 +87,42 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawStep, setWithdrawStep] = useState<WithdrawStep>("form");
 
+  const remaining = useCountdown(depositSession?.expiresAt ?? null);
+
+  // Restore session from localStorage on mount / open
+  useEffect(() => {
+    if (open) {
+      const s = loadSession();
+      if (s) {
+        setDepositSession(s);
+        setDepositStep("waiting_bot");
+        startPolling(s.txId);
+      }
+    }
+  }, [open]);
+
+  // Auto-expire when countdown hits 0
+  useEffect(() => {
+    if (depositSession && remaining === 0) {
+      stopPolling();
+      clearSession();
+      setDepositStep("expired");
+    }
+  }, [remaining, depositSession]);
+
   const stopPolling = () => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
   const resetDeposit = () => {
     stopPolling();
-    setGrowId(""); setDepositStep("form"); setDepositWorld("");
-    setDepositTxId(null); setDepositBot(null);
+    clearSession();
+    setGrowId("");
+    setDepositStep("form");
+    setDepositSession(null);
+    setDepositBot(null);
   };
+
   const resetWithdraw = () => { setWGrowId(""); setWithdrawAmount(""); setWithdrawStep("form"); };
 
   useEffect(() => () => stopPolling(), []);
@@ -56,7 +138,8 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
         const data = await res.json();
         if (data.status === "completed") {
           stopPolling();
-          updateUser({ balance: undefined }); // trigger refresh
+          clearSession();
+          updateUser({ balance: undefined });
           setDepositStep("bot_ready");
         } else if (data.botGrowId) {
           setDepositBot(data.botGrowId);
@@ -69,7 +152,6 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
 
   const handleTabChange = (t: Tab) => {
     setTab(t);
-    resetDeposit();
     resetWithdraw();
   };
 
@@ -87,8 +169,15 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed");
-      setDepositWorld(data.worldName);
-      setDepositTxId(data.transactionId);
+
+      const session: DepositSession = {
+        txId: data.transactionId,
+        worldName: data.worldName,
+        expiresAt: data.expiresAt,
+        growId: growId.trim(),
+      };
+      saveSession(session);
+      setDepositSession(session);
       setDepositStep("waiting_bot");
       startPolling(data.transactionId);
     } catch (err: any) {
@@ -133,13 +222,16 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
   };
 
   const copyWorld = () => {
-    navigator.clipboard.writeText(depositWorld).then(() =>
-      toast({ title: "Copied!", description: depositWorld })
+    if (!depositSession) return;
+    navigator.clipboard.writeText(depositSession.worldName).then(() =>
+      toast({ title: "Copied!", description: depositSession.worldName })
     );
   };
 
+  const isExpiringSoon = remaining > 0 && remaining < 30_000;
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { resetDeposit(); resetWithdraw(); } onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { stopPolling(); } onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border bg-[#1a1a2e]" style={{ zIndex: 9999 }}>
         <div className="px-6 pt-5 pb-1">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold text-white mb-4">
@@ -202,60 +294,83 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
                 </div>
               )}
 
-              {depositStep === "waiting_bot" && (
+              {(depositStep === "waiting_bot" || depositStep === "bot_ready") && depositSession && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-muted-foreground font-semibold mb-1.5 block">Your deposit world</label>
-                    <div className="flex gap-2">
-                      <div className="flex-1 bg-[#12122a] border border-border rounded-md px-3 py-2 font-mono font-bold text-primary text-sm tracking-widest">
-                        {depositWorld}
+                  {/* Countdown timer */}
+                  {remaining > 0 && (
+                    <div className={`flex items-center justify-between rounded-lg px-3 py-2 border ${
+                      isExpiringSoon
+                        ? "bg-red-500/10 border-red-500/30"
+                        : "bg-[#12122a] border-border"
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <Clock className={`w-4 h-4 shrink-0 ${isExpiringSoon ? "text-red-400 animate-pulse" : "text-yellow-400"}`} />
+                        <span className={`text-sm font-semibold ${isExpiringSoon ? "text-red-400" : "text-yellow-400"}`}>
+                          {depositStep === "bot_ready" ? "Trade window" : "Session expires in"}
+                        </span>
                       </div>
-                      <Button variant="outline" size="icon" onClick={copyWorld} className="shrink-0 border-border">
-                        <Copy className="w-4 h-4" />
-                      </Button>
+                      <span className={`font-mono font-bold text-lg ${isExpiringSoon ? "text-red-400" : "text-white"}`}>
+                        {formatCountdown(remaining)}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2">
-                    <Clock className="w-4 h-4 text-yellow-400 animate-pulse shrink-0" />
-                    <span className="text-yellow-400 text-sm font-semibold">Waiting for bot to join world…</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Go to <span className="font-bold text-primary">{depositWorld}</span> in Growtopia and wait — a bot will join shortly. Once it appears, trade it your items.
-                  </p>
-                  <Button variant="outline" onClick={resetDeposit} className="w-full border-border text-muted-foreground">
-                    Cancel
-                  </Button>
-                </div>
-              )}
+                  )}
 
-              {depositStep === "bot_ready" && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-                    <span className="text-green-400 text-sm font-semibold">Bot is in the world!</span>
-                  </div>
+                  {depositStep === "waiting_bot" && (
+                    <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2">
+                      <Loader2 className="w-4 h-4 text-yellow-400 animate-spin shrink-0" />
+                      <span className="text-yellow-400 text-sm font-semibold">Waiting for bot to join world…</span>
+                    </div>
+                  )}
+
+                  {depositStep === "bot_ready" && (
+                    <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                      <span className="text-green-400 text-sm font-semibold">Bot is in the world!</span>
+                    </div>
+                  )}
+
                   <div>
                     <label className="text-xs text-muted-foreground font-semibold mb-1.5 block">Your deposit world</label>
                     <div className="flex gap-2">
                       <div className="flex-1 bg-[#12122a] border border-border rounded-md px-3 py-2 font-mono font-bold text-primary text-sm tracking-widest">
-                        {depositWorld}
+                        {depositSession.worldName}
                       </div>
                       <Button variant="outline" size="icon" onClick={copyWorld} className="shrink-0 border-border">
                         <Copy className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
+
                   {depositBot && (
                     <div className="bg-[#12122a] border border-border rounded-md px-3 py-2 text-sm">
                       <span className="text-muted-foreground">Trade with: </span>
                       <span className="font-bold text-white">{depositBot}</span>
                     </div>
                   )}
+
                   <p className="text-xs text-muted-foreground">
-                    Go to <span className="font-bold text-primary">{depositWorld}</span>, find <span className="font-bold text-white">{depositBot ?? "the bot"}</span>, and <span className="font-bold text-white">TRADE</span> it your items. Your balance will be credited automatically.
+                    Go to <span className="font-bold text-primary">{depositSession.worldName}</span> in Growtopia
+                    {depositBot ? <>, find <span className="font-bold text-white">{depositBot}</span>,</> : " and wait for the bot,"}{" "}
+                    then <span className="font-bold text-white">TRADE</span> it your items.
                   </p>
+
                   <Button variant="outline" onClick={resetDeposit} className="w-full border-border text-muted-foreground">
-                    Start New Deposit
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              {depositStep === "expired" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span className="text-red-400 text-sm font-semibold">Deposit session expired</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your 2-minute deposit window has passed. Start a new deposit to try again.
+                  </p>
+                  <Button onClick={resetDeposit} className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-2.5">
+                    Try Again
                   </Button>
                 </div>
               )}

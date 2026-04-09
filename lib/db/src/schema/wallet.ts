@@ -11,4 +11,5 @@ export const walletTransactionsTable = pgTable("wallet_transactions", {
   botGrowId: text("bot_grow_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
 });

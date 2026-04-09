@@ -122,12 +122,16 @@ router.post("/bot/deposit-complete", requireBotSecret, async (req: any, res) => 
 // (default)     →  JSON array
 router.get("/bot/pending-deposits", requireBotSecret, async (req: any, res) => {
   try {
+    const now = new Date();
     const pending = await db.select()
       .from(walletTransactionsTable)
       .where(eq(walletTransactionsTable.status, "pending"))
       .limit(50);
 
-    const deposits = pending.filter((t) => t.type === "deposit");
+    const deposits = pending.filter((t) =>
+      t.type === "deposit" &&
+      (!t.expiresAt || t.expiresAt > now)
+    );
 
     if (req.query.format === "text") {
       const lines = deposits.map((d) =>
