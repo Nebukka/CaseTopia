@@ -1,40 +1,54 @@
 -- BetTopia Deposit & Withdrawal Bot
 -- Lucifer v2.83 p2
--- Paste into Executor and press Run
+-- Uses curl via io.popen; no JSON library required (text format API)
 
 local WEBSITE_URL = "https://case-topia.replit.app"
-local BOT_SECRET   = "your_bot_secret_here"   -- must match BOT_SECRET on server
-local BOT_GROW_ID  = getLocalName()            -- reads the bot's own GrowID
+local BOT_SECRET  = "0d68e6d0b7388733c797bfbe76ad3e5e2f3917de52365871ac1f3d7685f8037e"
+local BOT_GROW_ID = "zPlaysGT"
 
--- DL value of each item (1 Diamond Lock = 1 DL)
 local ITEM_VALUES = {
-    ["World Lock"]     = 0.01,
-    ["Diamond Lock"]   = 1,
-    ["Blue Gem Lock"]  = 100,
-    ["Dragon Lock"]    = 500,
+    ["World Lock"]    = 0.01,
+    ["Diamond Lock"]  = 1,
+    ["Blue Gem Lock"] = 100,
+    ["Dragon Lock"]   = 500,
 }
 
-local claimed_worlds  = {}   -- worlds already claimed
-local processing_wd   = {}   -- withdrawal IDs being processed
+local claimed_worlds = {}
+local processing_wd  = {}
 
--- ── HTTP helper ───────────────────────────────────────────────────────────────
-
-local function api(method, path, body)
-    local url = WEBSITE_URL .. "/api" .. path
-    local headers = {
-        ["X-Bot-Secret"] = BOT_SECRET,
-        ["Content-Type"] = "application/json",
-    }
-    local body_str = body and jsonEncode(body) or nil
-    local ok, res = pcall(function()
-        return http(url, method, headers, body_str)
-    end)
-    if not ok or not res then return nil end
-    local ok2, data = pcall(jsonDecode, res)
-    return ok2 and data or nil
+local function sleep(ms)
+    local t = os.clock()
+    while os.clock() - t < ms / 1000 do end
 end
 
--- ── Trade value calculator ────────────────────────────────────────────────────
+-- GET request, returns raw response string or nil
+local function api_get(path, params)
+    local sep = path:find("?") and "&" or "?"
+    local url = WEBSITE_URL .. "/api" .. path .. sep .. "secret=" .. BOT_SECRET
+    if params then url = url .. "&" .. params end
+    local ok, res = pcall(function()
+        local h = io.popen('curl -s "' .. url .. '"')
+        local r = h:read("*a")
+        h:close()
+        return r
+    end)
+    if not ok or not res then return nil end
+    return res
+end
+
+-- POST request using query params, returns response string or nil
+local function api_post(path, params)
+    local url = WEBSITE_URL .. "/api" .. path .. "?secret=" .. BOT_SECRET
+    if params then url = url .. "&" .. params end
+    local ok, res = pcall(function()
+        local h = io.popen('curl -s -X POST "' .. url .. '"')
+        local r = h:read("*a")
+        h:close()
+        return r
+    end)
+    if not ok or not res then return nil end
+    return res
+end
 
 local function trade_value(items)
     local total = 0
@@ -49,123 +63,74 @@ local function trade_value(items)
     return total
 end
 
--- ── Deposit poller ────────────────────────────────────────────────────────────
-
 local function poll_deposits()
-    local deposits = api("GET", "/bot/pending-deposits")
-    if not deposits then return end
-
-    for _, dep in ipairs(deposits) do
-        local world = dep.worldName
+    local res = api_get("/bot/pending-deposits", "format=text")
+    if not res or res == "" then return end
+    for line in res:gmatch("[^\n]+") do
+        -- format: worldName|growId|userId
+        local world, growId, userId = line:match("^([^|]+)|([^|]*)|([^|]+)$")
         if world and not claimed_worlds[world] then
-            print("[DEPOSIT] New session → world: " .. world .. " growId: " .. tostring(dep.growId))
-
-            -- Warp to the deposit world
-            warp(world)
-            sleep(3000)   -- wait until fully loaded
-
-            -- Tell the website this bot is ready at the world
-            local res = api("POST", "/bot/claim-deposit", {
-                worldName = world,
-                botGrowId = BOT_GROW_ID,
-            })
-
-            if res and res.ok then
+            print("[DEPOSIT] New session - world: " .. world .. " player: " .. tostring(growId))
+            Lucifer.warp(world)
+            sleep(3000)
+            local claim_res = api_post("/bot/claim-deposit",
+                "worldName=" .. world .. "&botGrowId=" .. BOT_GROW_ID)
+            if claim_res and claim_res:find('"ok":true') then
                 claimed_worlds[world] = true
-                print("[DEPOSIT] Claimed " .. world .. " (txId=" .. tostring(res.transactionId) .. ")")
-                say("@" .. tostring(dep.growId) .. " Hi! Trade me your DLs here at " .. world .. " to deposit.")
+                print("[DEPOSIT] Claimed " .. world)
+                Lucifer.say("@" .. tostring(growId) .. " Hi! Trade me your DLs here to deposit.")
             else
-                print("[DEPOSIT] claim-deposit failed for " .. world)
+                print("[DEPOSIT] Claim failed: " .. tostring(claim_res))
             end
         end
     end
 end
 
--- ── Withdrawal poller ─────────────────────────────────────────────────────────
-
 local function poll_withdrawals()
-    local withdrawals = api("GET", "/bot/pending-withdrawals")
-    if not withdrawals then return end
-
-    for _, wd in ipairs(withdrawals) do
-        local tx_id  = wd.id
-        local grow_id = wd.growId
-        local amount  = wd.amountDl
-
-        if not processing_wd[tx_id] then
+    local res = api_get("/bot/pending-withdrawals", "format=text")
+    if not res or res == "" then return end
+    for line in res:gmatch("[^\n]+") do
+        -- format: id|growId|amountDl
+        local tx_id, grow_id, amount_str = line:match("^([^|]+)|([^|]*)|([^|]+)$")
+        if tx_id and not processing_wd[tx_id] then
             processing_wd[tx_id] = true
-            print("[WITHDRAW] txId=" .. tx_id .. " → " .. tostring(amount) .. " DL to " .. tostring(grow_id))
-
-            -- Attempt to deliver the items in-game
-            -- Adjust these calls to match how your bot delivers items
-            local success = false
-            local ok, err = pcall(function()
-                warp("EXIT")       -- go to your trade/exit world
-                sleep(2000)
-                findPlayer(grow_id)
-                sleep(1000)
-                -- Add locks to trade based on amount
-                -- addTradeItem("Diamond Lock", math.floor(amount))
-                -- acceptTrade()
-                success = true
-            end)
-
-            if ok and success then
-                local res = api("POST", "/bot/withdraw-complete", { transactionId = tx_id })
-                if res and res.ok then
-                    print("[WITHDRAW] Completed txId=" .. tx_id)
-                else
-                    print("[WITHDRAW] withdraw-complete call failed for txId=" .. tx_id)
-                end
-            else
-                print("[WITHDRAW] Delivery failed: " .. tostring(err))
-                local res = api("POST", "/bot/withdraw-failed", { transactionId = tx_id })
-                if res and res.ok then
-                    print("[WITHDRAW] Refunded txId=" .. tx_id)
-                end
+            local amount = tonumber(amount_str) or 0
+            print("[WITHDRAW] " .. tostring(amount) .. " DL to " .. tostring(grow_id))
+            -- TODO: deliver items in-game
+            local done_res = api_post("/bot/withdraw-complete",
+                "transactionId=" .. tx_id)
+            if done_res and done_res:find('"ok":true') then
+                print("[WITHDRAW] Complete txId=" .. tx_id)
             end
-
             processing_wd[tx_id] = nil
         end
     end
 end
 
--- ── Trade accepted callback ───────────────────────────────────────────────────
--- Hook this to your trade-accepted event, or call it manually from onTrade()
-
 function onTradeAccepted(player_name, items)
-    local world = getWorld()
+    local world  = getWorld()
     local amount = trade_value(items)
-
-    print("[TRADE] " .. player_name .. " traded " .. amount .. " DL at " .. world)
-
     if amount <= 0 then
-        print("[TRADE] No recognised items — ignoring")
+        print("[TRADE] No recognized items from " .. tostring(player_name))
         return
     end
-
-    local res = api("POST", "/bot/deposit-complete", {
-        worldName = world,
-        amountDl  = amount,
-    })
-
-    if res and res.ok then
-        print("[TRADE] Credited " .. amount .. " DL (userId=" .. tostring(res.userId) .. ")")
-        say("@" .. player_name .. " Deposit received! " .. amount .. " DL added to your balance.")
-        claimed_worlds[world] = nil   -- free the slot
+    print("[TRADE] " .. tostring(amount) .. " DL from " .. tostring(player_name) .. " in " .. tostring(world))
+    local res = api_post("/bot/deposit-complete",
+        "worldName=" .. world .. "&amountDl=" .. tostring(amount))
+    if res and res:find('"ok":true') then
+        print("[TRADE] Credited " .. tostring(amount) .. " DL")
+        Lucifer.say("@" .. player_name .. " Deposit received! " .. tostring(amount) .. " DL added to your balance.")
+        claimed_worlds[world] = nil
     else
-        print("[TRADE] deposit-complete failed")
-        say("@" .. player_name .. " Something went wrong — contact support.")
+        print("[TRADE] deposit-complete failed: " .. tostring(res))
+        Lucifer.say("@" .. player_name .. " Something went wrong - contact support.")
     end
 end
 
--- ── Main loop ─────────────────────────────────────────────────────────────────
-
-print("BetTopia bot started — " .. BOT_GROW_ID)
-
+print("BetTopia bot started!")
 while true do
     poll_deposits()
     sleep(1000)
     poll_withdrawals()
-    sleep(4000)   -- total ~5s per cycle
+    sleep(4000)
 end

@@ -1,13 +1,14 @@
 /**
  * Bot webhook endpoints — called by the Growtopia bot script running externally.
  *
- * All requests must include the header:
- *   X-Bot-Secret: <BOT_SECRET env var>
+ * All requests must include either:
+ *   Header:      X-Bot-Secret: <BOT_SECRET>
+ *   Query param: ?secret=<BOT_SECRET>
  *
- * Endpoints:
- *   POST /api/bot/deposit-complete   — bot confirmed a player traded items
- *   GET  /api/bot/pending-withdrawals — bot polls for withdrawals to process
- *   POST /api/bot/withdraw-complete   — bot confirms it sent items to player
+ * GET endpoints support ?format=text which returns pipe-separated lines
+ * instead of JSON (for Lua clients without a JSON library).
+ *
+ * POST endpoints accept both JSON body AND query params.
  */
 import { Router, type IRouter } from "express";
 import { db, walletTransactionsTable, usersTable } from "@workspace/db";
@@ -29,12 +30,12 @@ function requireBotSecret(req: any, res: any, next: any) {
   next();
 }
 
-// ── Bot: claim a deposit session (assigns this bot's GrowID to the world) ────
-// Body: { worldName: string, botGrowId: string }
-// Call this as soon as the bot enters the world and is ready to trade.
+// ── Bot: claim a deposit session ─────────────────────────────────────────────
+// Params: worldName, botGrowId  (body JSON or query string)
 router.post("/bot/claim-deposit", requireBotSecret, async (req: any, res) => {
   try {
-    const { worldName, botGrowId } = req.body ?? {};
+    const worldName = String(req.body?.worldName ?? req.query.worldName ?? "");
+    const botGrowId = String(req.body?.botGrowId ?? req.query.botGrowId ?? "");
     if (!worldName || !botGrowId) {
       res.status(400).json({ error: "worldName and botGrowId required" });
       return;
@@ -66,16 +67,16 @@ router.post("/bot/claim-deposit", requireBotSecret, async (req: any, res) => {
 });
 
 // ── Bot: confirm deposit received ────────────────────────────────────────────
-// Body: { worldName: string, amountDl: number }
-// The bot calls this after a player trades items at the deposit world.
+// Params: worldName, amountDl  (body JSON or query string)
 router.post("/bot/deposit-complete", requireBotSecret, async (req: any, res) => {
   try {
-    const { worldName, amountDl } = req.body ?? {};
-    if (!worldName || !amountDl) {
+    const worldName = String(req.body?.worldName ?? req.query.worldName ?? "");
+    const rawAmount = req.body?.amountDl ?? req.query.amountDl;
+    if (!worldName || !rawAmount) {
       res.status(400).json({ error: "worldName and amountDl required" });
       return;
     }
-    const amount = parseFloat(amountDl);
+    const amount = parseFloat(rawAmount);
     if (!amount || amount <= 0) {
       res.status(400).json({ error: "Invalid amountDl" });
       return;
@@ -85,7 +86,6 @@ router.post("/bot/deposit-complete", requireBotSecret, async (req: any, res) => 
       return;
     }
 
-    // Find the pending deposit for this world
     const [pending] = await db.select()
       .from(walletTransactionsTable)
       .where(eq(walletTransactionsTable.worldName, worldName))
@@ -100,7 +100,6 @@ router.post("/bot/deposit-complete", requireBotSecret, async (req: any, res) => 
       return;
     }
 
-    // Credit balance and mark complete
     await db.transaction(async (tx) => {
       await tx.update(usersTable)
         .set({ balance: sql`${usersTable.balance} + ${amount}` })
@@ -118,8 +117,10 @@ router.post("/bot/deposit-complete", requireBotSecret, async (req: any, res) => 
   }
 });
 
-// ── Bot: get pending deposits to process ─────────────────────────────────────
-router.get("/bot/pending-deposits", requireBotSecret, async (_req, res) => {
+// ── Bot: get pending deposits ─────────────────────────────────────────────────
+// ?format=text  →  one line per deposit: worldName|growId|userId
+// (default)     →  JSON array
+router.get("/bot/pending-deposits", requireBotSecret, async (req: any, res) => {
   try {
     const pending = await db.select()
       .from(walletTransactionsTable)
@@ -127,14 +128,24 @@ router.get("/bot/pending-deposits", requireBotSecret, async (_req, res) => {
       .limit(50);
 
     const deposits = pending.filter((t) => t.type === "deposit");
-    res.json(deposits);
+
+    if (req.query.format === "text") {
+      const lines = deposits.map((d) =>
+        `${d.worldName}|${d.growId ?? ""}|${d.userId}`
+      );
+      res.type("text/plain").send(lines.join("\n"));
+    } else {
+      res.json(deposits);
+    }
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ── Bot: get pending withdrawals to process ───────────────────────────────────
-router.get("/bot/pending-withdrawals", requireBotSecret, async (_req, res) => {
+// ── Bot: get pending withdrawals ──────────────────────────────────────────────
+// ?format=text  →  one line per withdrawal: id|growId|amountDl
+// (default)     →  JSON array
+router.get("/bot/pending-withdrawals", requireBotSecret, async (req: any, res) => {
   try {
     const pending = await db.select()
       .from(walletTransactionsTable)
@@ -142,25 +153,33 @@ router.get("/bot/pending-withdrawals", requireBotSecret, async (_req, res) => {
       .limit(50);
 
     const withdrawals = pending.filter((t) => t.type === "withdrawal");
-    res.json(withdrawals);
+
+    if (req.query.format === "text") {
+      const lines = withdrawals.map((w) =>
+        `${w.id}|${w.growId ?? ""}|${w.amountDl ?? 0}`
+      );
+      res.type("text/plain").send(lines.join("\n"));
+    } else {
+      res.json(withdrawals);
+    }
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // ── Bot: confirm withdrawal delivered ────────────────────────────────────────
-// Body: { transactionId: number }
+// Params: transactionId  (body JSON or query string)
 router.post("/bot/withdraw-complete", requireBotSecret, async (req: any, res) => {
   try {
-    const { transactionId } = req.body ?? {};
-    if (!transactionId) {
+    const rawId = req.body?.transactionId ?? req.query.transactionId;
+    if (!rawId) {
       res.status(400).json({ error: "transactionId required" });
       return;
     }
 
     const [tx] = await db.select()
       .from(walletTransactionsTable)
-      .where(eq(walletTransactionsTable.id, parseInt(transactionId)))
+      .where(eq(walletTransactionsTable.id, parseInt(rawId)))
       .limit(1);
 
     if (!tx || tx.type !== "withdrawal") {
@@ -183,18 +202,18 @@ router.post("/bot/withdraw-complete", requireBotSecret, async (req: any, res) =>
 });
 
 // ── Bot: mark withdrawal as failed (refund balance) ──────────────────────────
-// Body: { transactionId: number }
+// Params: transactionId  (body JSON or query string)
 router.post("/bot/withdraw-failed", requireBotSecret, async (req: any, res) => {
   try {
-    const { transactionId } = req.body ?? {};
-    if (!transactionId) {
+    const rawId = req.body?.transactionId ?? req.query.transactionId;
+    if (!rawId) {
       res.status(400).json({ error: "transactionId required" });
       return;
     }
 
     const [tx] = await db.select()
       .from(walletTransactionsTable)
-      .where(eq(walletTransactionsTable.id, parseInt(transactionId)))
+      .where(eq(walletTransactionsTable.id, parseInt(rawId)))
       .limit(1);
 
     if (!tx || tx.type !== "withdrawal") {
@@ -206,7 +225,6 @@ router.post("/bot/withdraw-failed", requireBotSecret, async (req: any, res) => {
       return;
     }
 
-    // Refund the balance and mark failed
     await db.transaction(async (t) => {
       await t.update(usersTable)
         .set({ balance: sql`${usersTable.balance} + ${tx.amountDl}` })
