@@ -745,23 +745,36 @@ export default function Cases() {
     setReelItemsPerReel(updated);
 
     setTimeout(() => {
-      updated.forEach((_, idx) => {
-        const ref = reelRefs.current[idx];
-        if (ref) {
-          const randomOffset = isVertical ? (Math.floor(Math.random() * 60) - 30) : (Math.floor(Math.random() * 40) - 20);
-          if (isVertical) {
-            const targetScroll = WINNING_INDEX * getVConfig(perReel.length).step + randomOffset;
-            ref.style.transition = `transform ${duration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
-            ref.style.transform = `translateY(-${targetScroll}px)`;
-            startTickMonitor(ref, true);
-          } else {
-            const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
-            ref.style.transition = `transform ${duration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
-            ref.style.transform = `translateX(-${targetScroll}px)`;
-            startTickMonitor(ref, false);
+      // Pre-position horizontal reels at a small offset so items fill both sides immediately
+      if (!isVertical) {
+        const REEL_START_OFFSET = 5 * ITEM_WIDTH;
+        updated.forEach((_, idx) => {
+          const ref = reelRefs.current[idx];
+          if (ref) {
+            ref.style.transition = "none";
+            ref.style.transform = `translateX(-${REEL_START_OFFSET}px)`;
           }
-        }
-      });
+        });
+      }
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        updated.forEach((_, idx) => {
+          const ref = reelRefs.current[idx];
+          if (ref) {
+            const randomOffset = isVertical ? (Math.floor(Math.random() * 60) - 30) : (Math.floor(Math.random() * 40) - 20);
+            if (isVertical) {
+              const targetScroll = WINNING_INDEX * getVConfig(perReel.length).step + randomOffset;
+              ref.style.transition = `transform ${duration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+              ref.style.transform = `translateY(-${targetScroll}px)`;
+              startTickMonitor(ref, true);
+            } else {
+              const targetScroll = WINNING_INDEX * ITEM_WIDTH + randomOffset;
+              ref.style.transition = `transform ${duration}ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
+              ref.style.transform = `translateX(-${targetScroll}px)`;
+              startTickMonitor(ref, false);
+            }
+          }
+        });
+      }));
     }, 50);
 
     // Snap winning item to exact center after spin animation completes
@@ -809,7 +822,7 @@ export default function Cases() {
           reelRefs.current.forEach((ref, idx) => {
             if (ref && allBonusIndices.has(idx)) {
               ref.style.transition = "none";
-              ref.style.transform = "translateX(0)";
+              ref.style.transform = isVertical ? "translateY(0)" : `translateX(-${5 * ITEM_WIDTH}px)`;
             }
           });
 
@@ -906,7 +919,7 @@ export default function Cases() {
                 reelRefs.current.forEach((ref, idx) => {
                   if (ref && nestedResultIndices.includes(idx)) {
                     ref.style.transition = "none";
-                    ref.style.transform = isVertical ? "translateY(0)" : "translateX(0)";
+                    ref.style.transform = isVertical ? "translateY(0)" : `translateX(-${5 * ITEM_WIDTH}px)`;
                   }
                 });
                 setReelItemsPerReel(nestedPerReel);
