@@ -121,6 +121,7 @@ import teenyAngelWingsSrc from "@assets/teeny_angel_wings_1775747483643.webp";
 import fairyWingsSrc from "@assets/fairy_wings_1775747502366.webp";
 import autumnWingsSrc from "@assets/autumn_wings_1775747655581.webp";
 import darkAuroraWingsSrc from "@assets/dark_aurora_wings_1775747667384.webp";
+import auroraWingsSrc from "@assets/aurora_wings_1775747682423.webp";
 
 export interface CatalogItem {
   id: string;
@@ -984,6 +985,13 @@ export const ITEMS_CATALOG: CatalogItem[] = [
     imageUrl: darkAuroraWingsSrc,
     value: 11,
     color: "#7c3aed",
+  },
+  {
+    id: "aurora_wings",
+    name: "Aurora Wings",
+    imageUrl: auroraWingsSrc,
+    value: 12,
+    color: "#94a3b8",
   },
 ];
 
