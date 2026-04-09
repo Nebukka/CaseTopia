@@ -8,8 +8,9 @@ local BOT_SECRET  = "0d68e6d0b7388733c797bfbe76ad3e5e2f3917de52365871ac1f3d7685f
 local BOT_GROW_ID = "zPlaysGT"
 
 -- Growtopia item IDs
-local ITEM_DL = 1796  -- Diamond Lock
-local ITEM_WL = 242   -- World Lock
+local ITEM_BGL = 4532 -- Blue Gem Lock  (100 DL each)
+local ITEM_DL  = 1796 -- Diamond Lock   (1 DL each)
+local ITEM_WL  = 242  -- World Lock     (0.01 DL each)
 
 -- Deposits claimed this session (worldName -> true)
 local claimed_worlds = {}
@@ -45,28 +46,29 @@ local function api_post(path, params)
     return res
 end
 
--- Snapshot current DL and WL counts
+-- Snapshot current BGL, DL, and WL counts
 local function inv_snapshot(bot)
     local inv = bot:getInventory()
-    return inv:getItemCount(ITEM_DL), inv:getItemCount(ITEM_WL)
+    return inv:getItemCount(ITEM_BGL), inv:getItemCount(ITEM_DL), inv:getItemCount(ITEM_WL)
 end
 
 -- Watch inventory for up to timeoutSecs seconds.
--- Returns gained DL amount (DL + WL converted), or 0 on timeout.
+-- Returns gained DL amount (BGL*100 + DL + WL/100), or 0 on timeout.
 local function watch_inventory(bot, timeoutSecs)
-    local prevDL, prevWL = inv_snapshot(bot)
-    print("[INV] Before trade - DL:" .. prevDL .. " WL:" .. prevWL)
+    local prevBGL, prevDL, prevWL = inv_snapshot(bot)
+    print("[INV] Before trade - BGL:" .. prevBGL .. " DL:" .. prevDL .. " WL:" .. prevWL)
     local elapsed = 0
     while elapsed < timeoutSecs do
         sleep(2000)
         elapsed = elapsed + 2
-        local curDL, curWL = inv_snapshot(bot)
-        local gainDL = curDL - prevDL
-        local gainWL = curWL - prevWL
-        if gainDL > 0 or gainWL > 0 then
-            -- Convert: 100 WL = 1 DL
-            local totalDL = gainDL + (gainWL / 100)
-            print("[INV] Trade detected! +" .. gainDL .. " DL, +" .. gainWL .. " WL = " .. totalDL .. " DL total")
+        local curBGL, curDL, curWL = inv_snapshot(bot)
+        local gainBGL = curBGL - prevBGL
+        local gainDL  = curDL  - prevDL
+        local gainWL  = curWL  - prevWL
+        if gainBGL > 0 or gainDL > 0 or gainWL > 0 then
+            -- Convert: 1 BGL = 100 DL, 100 WL = 1 DL
+            local totalDL = (gainBGL * 100) + gainDL + (gainWL / 100)
+            print("[INV] Trade detected! +" .. gainBGL .. " BGL, +" .. gainDL .. " DL, +" .. gainWL .. " WL = " .. totalDL .. " DL total")
             return totalDL
         end
     end
