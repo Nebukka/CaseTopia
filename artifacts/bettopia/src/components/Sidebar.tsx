@@ -87,6 +87,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const [onlineCount, setOnlineCount] = useState(1);
 
   const { on } = useSSE();
@@ -220,7 +221,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   useEffect(() => {
     if (!emojiPickerOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insidePicker = emojiPickerRef.current?.contains(target);
+      const insideButton = emojiButtonRef.current?.contains(target);
+      if (!insidePicker && !insideButton) {
         setEmojiPickerOpen(false);
       }
     };
@@ -358,6 +362,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   autoCapitalize="off"
                 />
                 <Button
+                  ref={emojiButtonRef}
                   type="button"
                   size="icon"
                   variant="ghost"
