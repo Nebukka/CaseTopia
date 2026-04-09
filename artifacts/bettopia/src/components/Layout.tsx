@@ -9,10 +9,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
 
   useEffect(() => {
+    let prevWidth = window.innerWidth;
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
+      const newWidth = window.innerWidth;
+      if (newWidth !== prevWidth && newWidth < 1024) {
         setSidebarOpen(false);
       }
+      prevWidth = newWidth;
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
