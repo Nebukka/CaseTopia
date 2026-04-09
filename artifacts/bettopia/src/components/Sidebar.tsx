@@ -34,6 +34,7 @@ const CHAT_EMOJIS: { code: string; src: string; label: string }[] = [
   { code: ":lucky:", src: "/emojis/lucky.png", label: "Lucky" },
   { code: ":thumbsup:", src: "/emojis/thumbsup.webp", label: "Thumbs Up" },
   { code: ":thumbsdown:", src: "/emojis/thumbsdown.webp", label: "Thumbs Down" },
+  { code: ":worldlock:", src: "/emojis/worldlock.webp", label: "World Lock" },
 ];
 
 function renderMessageWithMentions(
