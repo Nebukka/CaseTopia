@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { Layout } from "../components/Layout";
 import { useGetCases, openCase, useCreateCommunityCase, useDeleteCommunityCase } from "@workspace/api-client-react";
 import type { Case, CaseItem } from "@workspace/api-client-react";
@@ -321,6 +321,18 @@ export default function Cases() {
   const [catalogSearch, setCatalogSearch] = useState("");
   const [createTab, setCreateTab] = useState<"catalog" | "settings">("catalog");
   const reelRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Pre-position horizontal reel before first paint to prevent blank-left flash
+  useLayoutEffect(() => {
+    if (modalMode === "opening" && openCount === 1) {
+      reelRefs.current.forEach((ref) => {
+        if (ref) {
+          ref.style.transition = "none";
+          ref.style.transform = `translateX(-${5 * ITEM_WIDTH}px)`;
+        }
+      });
+    }
+  }, [modalMode, openCount]);
 
   // ── Audio engine ─────────────────────────────────────────────────────────
   const audioCtxRef = useRef<AudioContext | null>(null);
