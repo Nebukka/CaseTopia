@@ -24,6 +24,7 @@ const CHAT_EMOJIS: { code: string; src: string; label: string }[] = [
   { code: ":mlg:", src: "/emojis/mlg.png", label: "MLG" },
   { code: ":blush:", src: "/emojis/ujo.png", label: "Blush" },
   { code: ":mad:", src: "/emojis/mad.png", label: "Mad" },
+  { code: ":kiss:", src: "/emojis/kiss.webp", label: "Kiss" },
 ];
 
 function renderMessageWithMentions(
