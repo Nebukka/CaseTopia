@@ -94,7 +94,7 @@ local function complete_deposit(bot, dep, totalDL)
         "worldName=" .. dep.world .. "&amountDl=" .. tostring(totalDL))
     if done_res and done_res:find('"ok":true') then
         print("[DEPOSIT] Credited " .. totalDL .. " DL to " .. dep.growId)
-        bot:say("@" .. dep.growId .. " Deposit received! " .. tostring(totalDL) .. " DL added to your balance.")
+        bot:say("@" .. dep.growId .. " Deposit received!")
     else
         print("[DEPOSIT] deposit-complete failed: " .. tostring(done_res))
         bot:say("@" .. dep.growId .. " Something went wrong - contact support.")
@@ -132,7 +132,6 @@ local function check_active_deposit(bot)
         dep.prevWL  = curWL
         dep.lastGainTime = now
         print("[DEPOSIT] Picked up " .. gained .. " DL (total: " .. dep.totalDL .. " DL)")
-        bot:say("@" .. dep.growId .. " Got " .. gained .. " DL! Drop more or wait 5s to finish.")
     end
 
     -- If items were received and nothing new for 5 seconds, complete
@@ -166,7 +165,7 @@ local function poll_deposits(bot)
                 return
             end
 
-            bot:say("@" .. tostring(growId) .. " Hi! DROP your Diamond Locks / BGLs on the ground to deposit. I will pick them up!")
+            bot:say("@" .. tostring(growId) .. " Drop")
 
             local prevBGL, prevDL, prevWL = inv_snapshot(bot)
             activeDeposit = {
