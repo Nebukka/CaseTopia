@@ -732,12 +732,6 @@ function CreateBattleView({
                 <span className="font-bold text-primary flex items-center gap-1">{formatBalance(Math.floor(totalCost * (1 - borrowPercent / 100)))} <GemIcon size={12} /></span>
               </div>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{borrowPercent > 0 ? "Your max win" : "Prize pool"}</span>
-              <span className={`font-bold flex items-center gap-1 ${borrowPercent > 0 ? "text-orange-300" : ""}`}>
-                {formatBalance(Math.floor(totalCost * playerCount * (borrowPercent > 0 ? (1 - borrowPercent / 100) : 1)))} <GemIcon size={12} />
-              </span>
-            </div>
             <Button
               onClick={handleCreate}
               disabled={selectedCases.length === 0 || createPending || !user}
