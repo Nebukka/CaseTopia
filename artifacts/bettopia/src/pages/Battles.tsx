@@ -626,18 +626,23 @@ function CreateBattleView({
               for (let i = 0; i < playerCount; i += playersPerTeam) {
                 teams.push(Array.from({ length: playersPerTeam }, (_, j) => i + j + 1));
               }
+              const circleSize = playerCount <= 3 ? "w-9 h-9" : playerCount === 4 ? "w-7 h-7" : "w-6 h-6";
+              const iconSize = playerCount <= 3 ? "w-3.5 h-3.5" : "w-3 h-3";
+              const teamGap = playerCount <= 3 ? "gap-1.5" : "gap-1";
+              const outerGap = playerCount <= 4 ? "gap-3" : "gap-1.5";
+              const vsSize = playerCount >= 6 ? "text-[10px]" : "text-xs";
               return (
-                <div className="flex items-center justify-center gap-3 overflow-x-auto">
+                <div className={`flex items-center justify-center ${outerGap} flex-wrap`}>
                   {teams.map((team, ti) => (
                     <React.Fragment key={ti}>
-                      {ti > 0 && <span className="text-muted-foreground/40 text-xs font-bold flex-shrink-0">VS</span>}
-                      <div className="flex items-end gap-1.5 flex-shrink-0">
+                      {ti > 0 && <span className={`text-muted-foreground/40 ${vsSize} font-bold flex-shrink-0`}>VS</span>}
+                      <div className={`flex items-end ${teamGap} flex-shrink-0`}>
                         {team.map((pNum) => (
-                          <div key={pNum} className="flex flex-col items-center gap-1">
-                            <div className="w-9 h-9 rounded-full border-2 border-dashed border-primary/30 bg-primary/5 flex items-center justify-center">
-                              <Users className="w-3.5 h-3.5 text-primary/40" />
+                          <div key={pNum} className="flex flex-col items-center gap-0.5">
+                            <div className={`${circleSize} rounded-full border-2 border-dashed border-primary/30 bg-primary/5 flex items-center justify-center`}>
+                              <Users className={`${iconSize} text-primary/40`} />
                             </div>
-                            <span className="text-[10px] text-muted-foreground/50">P{pNum}</span>
+                            <span className="text-[9px] text-muted-foreground/50">P{pNum}</span>
                           </div>
                         ))}
                       </div>
