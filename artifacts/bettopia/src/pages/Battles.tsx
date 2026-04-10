@@ -240,10 +240,9 @@ export default function Battles() {
               </div>
               <Button
                 onClick={() => setCreateDialogOpen(true)}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 flex-shrink-0"
-                size="sm"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 flex-shrink-0 mt-3 px-5 py-2.5 text-base"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-5 h-5" />
                 <span className="hidden sm:inline">Create Battle</span>
               </Button>
             </div>
