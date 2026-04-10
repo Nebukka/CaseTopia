@@ -203,6 +203,22 @@ end
 
 print("BetTopia bot started!")
 
+-- Discover which world-change methods exist on the bot object
+do
+    local bot = getBot(BOT_GROW_ID)
+    if bot then
+        local methods = {"warp","goToWorld","enterWorld","goWorld","changeWorld",
+                         "setWorld","joinWorld","reconnect","leaveWorld","connect",
+                         "sendPacket","sendPacketRaw","sendRaw"}
+        for _, fn in ipairs(methods) do
+            local t = type(bot[fn])
+            if t ~= "nil" then
+                print("[API] bot." .. fn .. " = " .. t)
+            end
+        end
+    end
+end
+
 while true do
     local bot = getBot(BOT_GROW_ID)
     if bot then
