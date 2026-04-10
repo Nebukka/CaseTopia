@@ -17,6 +17,7 @@ export const ppRoundsTable = pgTable("pp_rounds", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   gameSymbol: text("game_symbol").notNull(),
   betAmount: text("bet_amount").notNull().default("0"),
+  betReference: text("bet_reference"),
   winAmount: text("win_amount").notNull().default("0"),
   status: text("status").notNull().default("open"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
