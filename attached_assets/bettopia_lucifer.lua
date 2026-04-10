@@ -99,11 +99,25 @@ local function check_active_deposit(bot)
         return
     end
 
-    -- Send /trade request every 10 seconds regardless of whether player is detected
+    -- Send /trade request every 10 seconds
     if now - (dep.lastTradeAttempt or 0) >= 10 then
         dep.lastTradeAttempt = now
         print("[DEPOSIT] Sending /trade " .. dep.growId)
         bot:say("/trade " .. dep.growId)
+    end
+
+    -- Try to ready/confirm trade every 2 seconds
+    -- Test all known method names so we can see which one Lucifer supports
+    if now - (dep.lastTradeConfirm or 0) >= 2 then
+        dep.lastTradeConfirm = now
+        local r1, e1 = pcall(function() bot:acceptTrade() end)
+        local r2, e2 = pcall(function() bot:readyTrade() end)
+        local r3, e3 = pcall(function() bot:confirmTrade() end)
+        local r4, e4 = pcall(function() bot:doTrade() end)
+        print("[TRADE] accept=" .. tostring(r1) .. " " .. tostring(e1))
+        print("[TRADE] ready=" .. tostring(r2) .. " " .. tostring(e2))
+        print("[TRADE] confirm=" .. tostring(r3) .. " " .. tostring(e3))
+        print("[TRADE] do=" .. tostring(r4) .. " " .. tostring(e4))
     end
 end
 
