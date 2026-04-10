@@ -31,6 +31,7 @@ export default function Battles() {
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [battleFilter, setBattleFilter] = useState<"all" | "open" | "running">("all");
+  const [battleSort, setBattleSort] = useState<"newest" | "highest" | "lowest">("newest");
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [caseToAdd, setCaseToAdd] = useState<string>("");
   const [gameMode, setGameMode] = useState<string>("1v1");
@@ -247,39 +248,62 @@ export default function Battles() {
               </Button>
             </div>
 
-            {/* Filter tabs */}
-            {(() => {
-              const openCount = battles.filter((b: any) => b.status === "waiting").length;
-              const runningCount = battles.filter((b: any) => b.status === "running").length;
-              const allCount = openCount + runningCount;
-              const tabs = [
-                { key: "all",     label: "All",     count: allCount },
-                { key: "open",    label: "Open",    count: openCount },
-                { key: "running", label: "Running", count: runningCount },
-              ] as const;
-              return (
-                <div className="flex gap-1 bg-muted/30 border border-border rounded-xl p-1 w-fit">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.key}
-                      onClick={() => setBattleFilter(tab.key)}
-                      className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                        battleFilter === tab.key
-                          ? "bg-card text-foreground shadow-sm border border-border/60"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {tab.label}
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                        battleFilter === tab.key ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                      }`}>
-                        {tab.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
+            {/* Filter tabs + sort */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Filter tabs */}
+              {(() => {
+                const openCount = battles.filter((b: any) => b.status === "waiting").length;
+                const runningCount = battles.filter((b: any) => b.status === "running").length;
+                const allCount = openCount + runningCount;
+                const tabs = [
+                  { key: "all",     label: "All",     count: allCount },
+                  { key: "open",    label: "Open",    count: openCount },
+                  { key: "running", label: "Running", count: runningCount },
+                ] as const;
+                return (
+                  <div className="flex gap-1 bg-muted/30 border border-border rounded-xl p-1">
+                    {tabs.map((tab) => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setBattleFilter(tab.key)}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                          battleFilter === tab.key
+                            ? "bg-card text-foreground shadow-sm border border-border/60"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {tab.label}
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                          battleFilter === tab.key ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                        }`}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Sort buttons */}
+              <div className="flex gap-1 bg-muted/30 border border-border rounded-xl p-1">
+                {([
+                  { key: "highest", label: "Highest Price" },
+                  { key: "lowest",  label: "Lowest Price"  },
+                ] as const).map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => setBattleSort(battleSort === s.key ? "newest" : s.key)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                      battleSort === s.key
+                        ? "bg-card text-foreground shadow-sm border border-border/60"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {isLoading ? (
               <div className="text-center py-12 text-muted-foreground">Loading battles...</div>
@@ -287,11 +311,19 @@ export default function Battles() {
               <>
                 {/* Active battles list */}
                 {(() => {
-                  const activeBattles = battles.filter((b: any) => {
-                    if (battleFilter === "open") return b.status === "waiting";
-                    if (battleFilter === "running") return b.status === "running";
-                    return b.status === "waiting" || b.status === "running";
-                  });
+                  const activeBattles = battles
+                    .filter((b: any) => {
+                      if (battleFilter === "open") return b.status === "waiting";
+                      if (battleFilter === "running") return b.status === "running";
+                      return b.status === "waiting" || b.status === "running";
+                    })
+                    .sort((a: any, b: any) => {
+                      const aVal = getCaseCost(a) * (a.maxPlayers ?? 1);
+                      const bVal = getCaseCost(b) * (b.maxPlayers ?? 1);
+                      if (battleSort === "highest") return bVal - aVal;
+                      if (battleSort === "lowest") return aVal - bVal;
+                      return 0;
+                    });
                   if (activeBattles.length === 0) {
                     return (
                       <div className="text-center py-12 text-muted-foreground text-sm">
