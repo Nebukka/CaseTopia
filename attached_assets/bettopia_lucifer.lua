@@ -1,7 +1,7 @@
--- BetTopia Deposit & Withdrawal Bot
+-- BetTopia Deposit Bot
 -- Lucifer v2.83 p2
--- Non-blocking design: main loop uses short sleeps so Lucifer can process
--- trade requests (auto-accept) between inventory checks.
+-- Drop-based deposit: player drops items in the world, bot collects them.
+-- No trade acceptance needed.
 
 local WEBSITE_URL = "https://case-topia.replit.app"
 local BOT_SECRET  = "0d68e6d0b7388733c797bfbe76ad3e5e2f3917de52365871ac1f3d7685f8037e"
@@ -15,8 +15,8 @@ local ITEM_WL  = 242  -- World Lock     (0.01 DL each)
 local claimed_worlds = {}
 local processing_wd  = {}
 
--- Currently watched deposit session (nil when idle)
--- Fields: world, growId, expiresAt, prevBGL, prevDL, prevWL
+-- Active deposit: nil when idle
+-- Fields: world, growId, expiresAt, prevBGL, prevDL, prevWL, totalDL, lastGainTime
 local activeDeposit = nil
 
 local function api_get(path, params)
@@ -51,50 +51,95 @@ local function inv_snapshot(bot)
     return inv:getItemCount(ITEM_BGL), inv:getItemCount(ITEM_DL), inv:getItemCount(ITEM_WL)
 end
 
--- Called every main loop tick while a deposit is active.
--- Returns immediately (non-blocking) after checking inventory.
+-- Walk to and collect any DL/BGL/WL objects in the current world
+local function collect_items(bot)
+    local world = bot:getWorld()
+    local objs = world:getObjects()
+    local found = false
+    for i = 1, objs:size() do
+        local ok, obj = pcall(function() return objs:get(i) end)
+        if ok and obj then
+            local id = obj.id
+            if id == ITEM_BGL or id == ITEM_DL or id == ITEM_WL then
+                found = true
+                print("[COLLECT] Item " .. id .. " at " .. obj.x .. "," .. obj.y)
+                bot:moveTo(obj.x, obj.y)
+                sleep(800)
+                -- Try explicit collect calls in case moveTo isn't enough
+                pcall(function() bot:collect(obj.x, obj.y) end)
+                pcall(function() bot:collect(obj.oid) end)
+                pcall(function() bot:collect() end)
+            end
+        end
+    end
+    return found
+end
+
+local function complete_deposit()
+    local dep = activeDeposit
+    if dep.totalDL <= 0 then
+        print("[DEPOSIT] Nothing received in " .. dep.world .. " - cancelling")
+        api_post("/bot/cancel-deposit", "worldName=" .. dep.world)
+        bot:warp("EXIT")
+        claimed_worlds[dep.world] = nil
+        activeDeposit = nil
+        return
+    end
+
+    local done_res = api_post("/bot/deposit-complete",
+        "worldName=" .. dep.world .. "&amountDl=" .. tostring(dep.totalDL))
+    if done_res and done_res:find('"ok":true') then
+        print("[DEPOSIT] Credited " .. dep.totalDL .. " DL")
+        bot:say("@" .. dep.growId .. " Deposit received! " .. tostring(dep.totalDL) .. " DL added to your balance.")
+    else
+        print("[DEPOSIT] deposit-complete failed: " .. tostring(done_res))
+        bot:say("@" .. dep.growId .. " Something went wrong - contact support.")
+    end
+    claimed_worlds[dep.world] = nil
+    activeDeposit = nil
+end
+
 local function check_active_deposit(bot)
     if not activeDeposit then return end
 
     local now = os.time()
 
-    -- Check if the deposit timer expired
+    -- Expired: complete with whatever was received
     if activeDeposit.expiresAt > 0 and now >= activeDeposit.expiresAt then
-        print("[DEPOSIT] Expired - cancelling " .. activeDeposit.world)
-        api_post("/bot/cancel-deposit", "worldName=" .. activeDeposit.world)
-        bot:warp("EXIT")
-        claimed_worlds[activeDeposit.world] = nil
-        activeDeposit = nil
+        print("[DEPOSIT] Timer expired for " .. activeDeposit.world)
+        complete_deposit()
         return
     end
 
-    -- Check if bot received any items
+    -- Try to collect any dropped items
+    collect_items(bot)
+
+    -- Check inventory for gains since last check
     local curBGL, curDL, curWL = inv_snapshot(bot)
     local gainBGL = curBGL - activeDeposit.prevBGL
     local gainDL  = curDL  - activeDeposit.prevDL
     local gainWL  = curWL  - activeDeposit.prevWL
 
     if gainBGL > 0 or gainDL > 0 or gainWL > 0 then
-        local totalDL = (gainBGL * 100) + gainDL + (gainWL / 100)
-        print("[INV] Trade detected! +" .. gainBGL .. " BGL +" .. gainDL .. " DL +" .. gainWL .. " WL = " .. totalDL .. " DL")
+        local gained = (gainBGL * 100) + gainDL + (gainWL / 100)
+        activeDeposit.totalDL = activeDeposit.totalDL + gained
+        activeDeposit.lastGainTime = now
+        -- Update baseline for next check
+        activeDeposit.prevBGL = curBGL
+        activeDeposit.prevDL  = curDL
+        activeDeposit.prevWL  = curWL
+        print("[DEPOSIT] Received " .. gained .. " DL (total: " .. activeDeposit.totalDL .. " DL)")
+        bot:say("@" .. activeDeposit.growId .. " Got " .. gained .. " DL! Drop more or wait to finish.")
+    end
 
-        local done_res = api_post("/bot/deposit-complete",
-            "worldName=" .. activeDeposit.world .. "&amountDl=" .. tostring(totalDL))
-        if done_res and done_res:find('"ok":true') then
-            print("[DEPOSIT] Credited " .. totalDL .. " DL")
-            bot:say("@" .. activeDeposit.growId .. " Deposit received! " .. tostring(totalDL) .. " DL added to your balance.")
-        else
-            print("[DEPOSIT] deposit-complete failed: " .. tostring(done_res))
-            bot:say("@" .. activeDeposit.growId .. " Something went wrong - contact support.")
-        end
-
-        claimed_worlds[activeDeposit.world] = nil
-        activeDeposit = nil
+    -- If items were received and no new drops for 5 seconds, complete
+    if activeDeposit.totalDL > 0 and activeDeposit.lastGainTime > 0
+        and now - activeDeposit.lastGainTime >= 5 then
+        print("[DEPOSIT] No new items for 5s - completing deposit")
+        complete_deposit()
     end
 end
 
--- Pick up the next pending deposit and warp to it.
--- Only sets activeDeposit and returns - does NOT block waiting for the trade.
 local function poll_deposits(bot)
     if activeDeposit then return end
 
@@ -109,7 +154,7 @@ local function poll_deposits(bot)
 
             claimed_worlds[world] = true
             bot:warp(world)
-            sleep(3000) -- wait for warp to complete (one-time, not a loop)
+            sleep(3000)
 
             local claim_res = api_post("/bot/claim-deposit",
                 "worldName=" .. world .. "&botGrowId=" .. BOT_GROW_ID)
@@ -119,19 +164,20 @@ local function poll_deposits(bot)
                 return
             end
 
-            bot:say("@" .. tostring(growId) .. " Hi! Trade me your Diamond Locks to deposit.")
+            bot:say("@" .. tostring(growId) .. " Hi! DROP your Diamond Locks / BGLs here to deposit. Do NOT trade!")
 
-            -- Snapshot inventory NOW then return immediately to main loop
             local prevBGL, prevDL, prevWL = inv_snapshot(bot)
             activeDeposit = {
-                world    = world,
-                growId   = tostring(growId),
-                expiresAt = expiresAt,
-                prevBGL  = prevBGL,
-                prevDL   = prevDL,
-                prevWL   = prevWL,
+                world       = world,
+                growId      = tostring(growId),
+                expiresAt   = expiresAt,
+                prevBGL     = prevBGL,
+                prevDL      = prevDL,
+                prevWL      = prevWL,
+                totalDL     = 0,
+                lastGainTime = 0,
             }
-            print("[DEPOSIT] Now watching inventory in " .. world .. " (expires: " .. tostring(expiresAt) .. ")")
+            print("[DEPOSIT] Watching world " .. world .. " for dropped items")
             return
         end
     end
@@ -156,7 +202,6 @@ local function poll_withdrawals(bot)
     end
 end
 
--- Main loop
 local bot = getBot(BOT_GROW_ID)
 print("BetTopia bot started! Bot: " .. tostring(bot))
 
@@ -166,5 +211,5 @@ while true do
         poll_deposits(bot)
         poll_withdrawals(bot)
     end
-    sleep(500) -- short sleep: Lucifer processes trade events between ticks
+    sleep(500)
 end
