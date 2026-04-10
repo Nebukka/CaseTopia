@@ -566,11 +566,11 @@ export function BattleScreen({ battle:initialBattle, currentUserId, isCreator=fa
       {/* ── WAITING LOBBY ──────────────────────────────────────────── */}
       {phase==="waiting"&&(
         <div className="flex flex-col">
-          {/* Team slot grid */}
+          {/* Team slot grid — always render ALL teams based on gameMode */}
           <div className="flex min-h-[220px]">
-            {teamIndices.map((teamIdx,ti)=>{
+            {Array.from({length:numTeams},(_,teamIdx)=>teamIdx).map((teamIdx,ti)=>{
               const tc=TEAM_COLORS[teamIdx%TEAM_COLORS.length]??TEAM_COLORS[0];
-              const ppTeam=maxPlayers/numTeams;
+              const ppTeam=playersPerTeam;
               const teamSlots=Array.from({length:ppTeam},(_,pi)=>teamIdx*ppTeam+pi);
               return (
                 <React.Fragment key={teamIdx}>
