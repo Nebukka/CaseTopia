@@ -343,7 +343,7 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
                   {depositStep === "bot_ready" && (
                     <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">
                       <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-                      <span className="text-green-400 text-sm font-semibold">Bot is in the world — DROP your items now!</span>
+                      <span className="text-green-400 text-sm font-semibold">Bot is in the world — accept the trade request!</span>
                     </div>
                   )}
 
@@ -367,9 +367,8 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    Go to <span className="font-bold text-primary">{depositSession.worldName}</span> in Growtopia
-                    {depositBot ? <>, find <span className="font-bold text-white">{depositBot}</span>,</> : " and wait for the bot,"}{" "}
-                    then <span className="font-bold text-yellow-400">DROP</span> your DLs / BGLs on the ground. The bot will pick them up automatically.
+                    Go to <span className="font-bold text-primary">{depositSession.worldName}</span> in Growtopia.
+                    The bot will send you a <span className="font-bold text-white">trade request</span> — accept it, add your DLs / BGLs, then confirm.
                   </p>
 
                   <Button variant="outline" onClick={resetDeposit} className="w-full border-border text-muted-foreground">

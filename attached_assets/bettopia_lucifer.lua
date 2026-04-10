@@ -1,7 +1,7 @@
 -- BetTopia Deposit Bot
 -- Lucifer v2.83 p2
--- Drop-based deposit: player drops items in the world, bot collects them.
--- No trade acceptance needed.
+-- Bot initiates /trade (growId) when the depositor enters the world.
+-- Inventory polling detects when trade completes.
 
 local WEBSITE_URL = "https://case-topia.replit.app"
 local BOT_SECRET  = "0d68e6d0b7388733c797bfbe76ad3e5e2f3917de52365871ac1f3d7685f8037e"
@@ -15,8 +15,8 @@ local ITEM_WL  = 242  -- World Lock     (0.01 DL each)
 local claimed_worlds = {}
 local processing_wd  = {}
 
--- Active deposit: nil when idle
--- Fields: world, growId, expiresAt, prevBGL, prevDL, prevWL, totalDL, lastGainTime
+-- Active deposit session
+-- Fields: world, growId, expiresAt, prevBGL, prevDL, prevWL, lastTradeAttempt
 local activeDeposit = nil
 
 local function api_get(path, params)
@@ -51,46 +51,45 @@ local function inv_snapshot(bot)
     return inv:getItemCount(ITEM_BGL), inv:getItemCount(ITEM_DL), inv:getItemCount(ITEM_WL)
 end
 
--- Walk to and collect any DL/BGL/WL objects in the current world
-local function collect_items(bot)
+-- Check if a player with the given growId is currently in the world
+local function player_in_world(bot, growId)
     local world = bot:getWorld()
-    local objs = world:getObjects()
-    local found = false
-    for i = 1, objs:size() do
-        local ok, obj = pcall(function() return objs:get(i) end)
-        if ok and obj then
-            local id = obj.id
-            if id == ITEM_BGL or id == ITEM_DL or id == ITEM_WL then
-                found = true
-                print("[COLLECT] Item " .. id .. " at " .. obj.x .. "," .. obj.y)
-                bot:moveTo(obj.x, obj.y)
-                sleep(800)
-                -- Try explicit collect calls in case moveTo isn't enough
-                pcall(function() bot:collect(obj.x, obj.y) end)
-                pcall(function() bot:collect(obj.oid) end)
-                pcall(function() bot:collect() end)
+    -- Try getPlayer by name first
+    local ok, p = pcall(function() return world:getPlayer(growId) end)
+    if ok and p ~= nil then return true end
+    -- Fallback: scan getPlayers list
+    local ok2, players = pcall(function() return world:getPlayers() end)
+    if not ok2 then return false end
+    -- players is userdata; try iterating like objects
+    local ok3, sz = pcall(function() return players:size() end)
+    if ok3 and sz then
+        for i = 1, sz do
+            local ok4, pl = pcall(function() return players:get(i) end)
+            if ok4 and pl then
+                local ok5, nm = pcall(function() return pl.name end)
+                if ok5 and nm and nm:lower() == growId:lower() then
+                    return true
+                end
             end
         end
     end
-    return found
+    return false
 end
 
-local function complete_deposit()
-    local dep = activeDeposit
-    if dep.totalDL <= 0 then
-        print("[DEPOSIT] Nothing received in " .. dep.world .. " - cancelling")
+local function complete_deposit(bot, dep, totalDL)
+    if totalDL <= 0 then
+        print("[DEPOSIT] Nothing received - cancelling " .. dep.world)
         api_post("/bot/cancel-deposit", "worldName=" .. dep.world)
         bot:warp("EXIT")
         claimed_worlds[dep.world] = nil
         activeDeposit = nil
         return
     end
-
     local done_res = api_post("/bot/deposit-complete",
-        "worldName=" .. dep.world .. "&amountDl=" .. tostring(dep.totalDL))
+        "worldName=" .. dep.world .. "&amountDl=" .. tostring(totalDL))
     if done_res and done_res:find('"ok":true') then
-        print("[DEPOSIT] Credited " .. dep.totalDL .. " DL")
-        bot:say("@" .. dep.growId .. " Deposit received! " .. tostring(dep.totalDL) .. " DL added to your balance.")
+        print("[DEPOSIT] Credited " .. totalDL .. " DL")
+        bot:say("@" .. dep.growId .. " Deposit received! " .. tostring(totalDL) .. " DL added to your balance.")
     else
         print("[DEPOSIT] deposit-complete failed: " .. tostring(done_res))
         bot:say("@" .. dep.growId .. " Something went wrong - contact support.")
@@ -101,42 +100,46 @@ end
 
 local function check_active_deposit(bot)
     if not activeDeposit then return end
-
+    local dep = activeDeposit
     local now = os.time()
 
-    -- Expired: complete with whatever was received
-    if activeDeposit.expiresAt > 0 and now >= activeDeposit.expiresAt then
-        print("[DEPOSIT] Timer expired for " .. activeDeposit.world)
-        complete_deposit()
+    -- Check expiry
+    if dep.expiresAt > 0 and now >= dep.expiresAt then
+        print("[DEPOSIT] Timer expired for " .. dep.world)
+        complete_deposit(bot, dep, dep.totalDL or 0)
         return
     end
 
-    -- Try to collect any dropped items
-    collect_items(bot)
-
-    -- Check inventory for gains since last check
+    -- Check inventory for trade completion
     local curBGL, curDL, curWL = inv_snapshot(bot)
-    local gainBGL = curBGL - activeDeposit.prevBGL
-    local gainDL  = curDL  - activeDeposit.prevDL
-    local gainWL  = curWL  - activeDeposit.prevWL
+    local gainBGL = curBGL - dep.prevBGL
+    local gainDL  = curDL  - dep.prevDL
+    local gainWL  = curWL  - dep.prevWL
 
     if gainBGL > 0 or gainDL > 0 or gainWL > 0 then
         local gained = (gainBGL * 100) + gainDL + (gainWL / 100)
-        activeDeposit.totalDL = activeDeposit.totalDL + gained
-        activeDeposit.lastGainTime = now
-        -- Update baseline for next check
-        activeDeposit.prevBGL = curBGL
-        activeDeposit.prevDL  = curDL
-        activeDeposit.prevWL  = curWL
-        print("[DEPOSIT] Received " .. gained .. " DL (total: " .. activeDeposit.totalDL .. " DL)")
-        bot:say("@" .. activeDeposit.growId .. " Got " .. gained .. " DL! Drop more or wait to finish.")
+        dep.totalDL = (dep.totalDL or 0) + gained
+        dep.prevBGL = curBGL
+        dep.prevDL  = curDL
+        dep.prevWL  = curWL
+        print("[DEPOSIT] Trade complete! +" .. gainBGL .. " BGL +" .. gainDL .. " DL +" .. gainWL .. " WL = " .. gained .. " DL")
+        complete_deposit(bot, dep, dep.totalDL)
+        return
     end
 
-    -- If items were received and no new drops for 5 seconds, complete
-    if activeDeposit.totalDL > 0 and activeDeposit.lastGainTime > 0
-        and now - activeDeposit.lastGainTime >= 5 then
-        print("[DEPOSIT] No new items for 5s - completing deposit")
-        complete_deposit()
+    -- If player is in the world, retry /trade every 10 seconds
+    if player_in_world(bot, dep.growId) then
+        if now - (dep.lastTradeAttempt or 0) >= 10 then
+            dep.lastTradeAttempt = now
+            print("[DEPOSIT] Player found - sending /trade " .. dep.growId)
+            bot:say("/trade " .. dep.growId)
+        end
+    else
+        -- Player not here yet, remind them every 30 seconds
+        if now - (dep.lastRemind or 0) >= 30 then
+            dep.lastRemind = now
+            print("[DEPOSIT] Waiting for " .. dep.growId .. " to join " .. dep.world)
+        end
     end
 end
 
@@ -164,20 +167,21 @@ local function poll_deposits(bot)
                 return
             end
 
-            bot:say("@" .. tostring(growId) .. " Hi! DROP your Diamond Locks / BGLs here to deposit. Do NOT trade!")
+            bot:say("@" .. tostring(growId) .. " Hi! I'll send you a trade request shortly. Accept it and add your DLs!")
 
             local prevBGL, prevDL, prevWL = inv_snapshot(bot)
             activeDeposit = {
-                world       = world,
-                growId      = tostring(growId),
-                expiresAt   = expiresAt,
-                prevBGL     = prevBGL,
-                prevDL      = prevDL,
-                prevWL      = prevWL,
-                totalDL     = 0,
-                lastGainTime = 0,
+                world            = world,
+                growId           = tostring(growId),
+                expiresAt        = expiresAt,
+                prevBGL          = prevBGL,
+                prevDL           = prevDL,
+                prevWL           = prevWL,
+                totalDL          = 0,
+                lastTradeAttempt = 0,
+                lastRemind       = os.time(),
             }
-            print("[DEPOSIT] Watching world " .. world .. " for dropped items")
+            print("[DEPOSIT] Watching world " .. world .. " for " .. growId)
             return
         end
     end
