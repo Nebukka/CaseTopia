@@ -1,23 +1,20 @@
 -- BetTopia Deposit Bot
 -- Lucifer v2.83 p2
--- Bot initiates /trade (growId) when the depositor enters the world.
--- Inventory polling detects when trade completes.
+-- Bot sends /trade (growId) every 10 seconds after warping to the deposit world.
+-- No player detection needed -- if they're not there yet it fails silently.
+-- Inventory polling detects when the trade is accepted and items are received.
 
 local WEBSITE_URL = "https://case-topia.replit.app"
 local BOT_SECRET  = "0d68e6d0b7388733c797bfbe76ad3e5e2f3917de52365871ac1f3d7685f8037e"
 local BOT_GROW_ID = "zPlaysGT"
 
--- Growtopia item IDs
 local ITEM_BGL = 4532 -- Blue Gem Lock  (100 DL each)
 local ITEM_DL  = 1796 -- Diamond Lock   (1 DL each)
 local ITEM_WL  = 242  -- World Lock     (0.01 DL each)
 
 local claimed_worlds = {}
 local processing_wd  = {}
-
--- Active deposit session
--- Fields: world, growId, expiresAt, prevBGL, prevDL, prevWL, lastTradeAttempt
-local activeDeposit = nil
+local activeDeposit  = nil
 
 local function api_get(path, params)
     local sep = path:find("?") and "&" or "?"
@@ -51,31 +48,6 @@ local function inv_snapshot(bot)
     return inv:getItemCount(ITEM_BGL), inv:getItemCount(ITEM_DL), inv:getItemCount(ITEM_WL)
 end
 
--- Check if a player with the given growId is currently in the world
-local function player_in_world(bot, growId)
-    local world = bot:getWorld()
-    -- Try getPlayer by name first
-    local ok, p = pcall(function() return world:getPlayer(growId) end)
-    if ok and p ~= nil then return true end
-    -- Fallback: scan getPlayers list
-    local ok2, players = pcall(function() return world:getPlayers() end)
-    if not ok2 then return false end
-    -- players is userdata; try iterating like objects
-    local ok3, sz = pcall(function() return players:size() end)
-    if ok3 and sz then
-        for i = 1, sz do
-            local ok4, pl = pcall(function() return players:get(i) end)
-            if ok4 and pl then
-                local ok5, nm = pcall(function() return pl.name end)
-                if ok5 and nm and nm:lower() == growId:lower() then
-                    return true
-                end
-            end
-        end
-    end
-    return false
-end
-
 local function complete_deposit(bot, dep, totalDL)
     if totalDL <= 0 then
         print("[DEPOSIT] Nothing received - cancelling " .. dep.world)
@@ -88,7 +60,7 @@ local function complete_deposit(bot, dep, totalDL)
     local done_res = api_post("/bot/deposit-complete",
         "worldName=" .. dep.world .. "&amountDl=" .. tostring(totalDL))
     if done_res and done_res:find('"ok":true') then
-        print("[DEPOSIT] Credited " .. totalDL .. " DL")
+        print("[DEPOSIT] Credited " .. totalDL .. " DL to " .. dep.growId)
         bot:say("@" .. dep.growId .. " Deposit received! " .. tostring(totalDL) .. " DL added to your balance.")
     else
         print("[DEPOSIT] deposit-complete failed: " .. tostring(done_res))
@@ -110,7 +82,7 @@ local function check_active_deposit(bot)
         return
     end
 
-    -- Check inventory for trade completion
+    -- Check if inventory increased (trade was accepted)
     local curBGL, curDL, curWL = inv_snapshot(bot)
     local gainBGL = curBGL - dep.prevBGL
     local gainDL  = curDL  - dep.prevDL
@@ -127,19 +99,11 @@ local function check_active_deposit(bot)
         return
     end
 
-    -- If player is in the world, retry /trade every 10 seconds
-    if player_in_world(bot, dep.growId) then
-        if now - (dep.lastTradeAttempt or 0) >= 10 then
-            dep.lastTradeAttempt = now
-            print("[DEPOSIT] Player found - sending /trade " .. dep.growId)
-            bot:say("/trade " .. dep.growId)
-        end
-    else
-        -- Player not here yet, remind them every 30 seconds
-        if now - (dep.lastRemind or 0) >= 30 then
-            dep.lastRemind = now
-            print("[DEPOSIT] Waiting for " .. dep.growId .. " to join " .. dep.world)
-        end
+    -- Send /trade request every 10 seconds regardless of whether player is detected
+    if now - (dep.lastTradeAttempt or 0) >= 10 then
+        dep.lastTradeAttempt = now
+        print("[DEPOSIT] Sending /trade " .. dep.growId)
+        bot:say("/trade " .. dep.growId)
     end
 end
 
@@ -167,7 +131,7 @@ local function poll_deposits(bot)
                 return
             end
 
-            bot:say("@" .. tostring(growId) .. " Hi! I'll send you a trade request shortly. Accept it and add your DLs!")
+            bot:say("@" .. tostring(growId) .. " Hi! Accept my trade request and add your DLs to deposit!")
 
             local prevBGL, prevDL, prevWL = inv_snapshot(bot)
             activeDeposit = {
@@ -179,9 +143,8 @@ local function poll_deposits(bot)
                 prevWL           = prevWL,
                 totalDL          = 0,
                 lastTradeAttempt = 0,
-                lastRemind       = os.time(),
             }
-            print("[DEPOSIT] Watching world " .. world .. " for " .. growId)
+            print("[DEPOSIT] Session active, will send /trade every 10s")
             return
         end
     end
@@ -196,7 +159,6 @@ local function poll_withdrawals(bot)
             processing_wd[tx_id] = true
             local amount = tonumber(amount_str) or 0
             print("[WITHDRAW] " .. tostring(amount) .. " DL to " .. tostring(grow_id))
-            -- TODO: deliver items in-game
             local done_res = api_post("/bot/withdraw-complete", "transactionId=" .. tx_id)
             if done_res and done_res:find('"ok":true') then
                 print("[WITHDRAW] Complete txId=" .. tx_id)
@@ -207,7 +169,7 @@ local function poll_withdrawals(bot)
 end
 
 local bot = getBot(BOT_GROW_ID)
-print("BetTopia bot started! Bot: " .. tostring(bot))
+print("BetTopia bot started!")
 
 while true do
     check_active_deposit(bot)
