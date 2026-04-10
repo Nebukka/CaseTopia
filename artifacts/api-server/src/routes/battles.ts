@@ -122,14 +122,18 @@ function runBattle(players: BattlePlayer[], caseIds: number[], casesById: Record
   return { rounds, updatedPlayers, winnerTeamIndex, winnerPlayer, isDraw };
 }
 
-async function payWinners(updatedPlayers: BattlePlayer[], winnerTeamIndex: number, totalPrize: number) {
+async function payWinners(updatedPlayers: BattlePlayer[], winnerTeamIndex: number, totalPrize: number, borrowPercent = 0, creatorUserId?: number) {
   const winnerRealPlayers = updatedPlayers.filter((p) => p.teamIndex === winnerTeamIndex && p.userId > 0);
   if (winnerRealPlayers.length === 0) return;
   const prizeEach = Math.floor(totalPrize / winnerRealPlayers.length);
   for (const w of winnerRealPlayers) {
+    const isCreator = creatorUserId != null && w.userId === creatorUserId;
+    const actualPrize = isCreator && borrowPercent > 0
+      ? Math.floor(prizeEach * (1 - borrowPercent / 100))
+      : prizeEach;
     const current = await db.select().from(usersTable).where(eq(usersTable.id, w.userId)).limit(1);
     if (current[0]) {
-      await db.update(usersTable).set({ balance: current[0].balance + prizeEach }).where(eq(usersTable.id, w.userId));
+      await db.update(usersTable).set({ balance: current[0].balance + actualPrize }).where(eq(usersTable.id, w.userId));
     }
   }
 }
@@ -179,6 +183,7 @@ function formatBattle(b: any, cases: any[]) {
     totalValue: b.totalValue,
     isShared: b.isShared ?? false,
     battleType: b.battleType ?? "normal",
+    borrowPercent: b.borrowPercent ?? 0,
     isDraw: b.isDraw ?? false,
     winnerId: b.winnerId ? String(b.winnerId) : undefined,
     winnerTeamIndex: b.winnerTeamIndex ?? undefined,
@@ -215,7 +220,8 @@ router.get("/battles/:id", async (req, res) => {
 
 router.post("/battles", requireAuth, async (req: any, res) => {
   try {
-    const { caseIds, gameMode = "1v1", botSlots = [], isShared = false, battleType = "normal" } = req.body;
+    const { caseIds, gameMode = "1v1", botSlots = [], isShared = false, battleType = "normal", borrowPercent: rawBorrow = 0 } = req.body;
+    const borrowPercent = Math.min(80, Math.max(0, parseInt(rawBorrow) || 0));
     const modeConfig = GAME_MODES[gameMode];
     if (!modeConfig) { res.status(400).json({ error: "Invalid game mode" }); return; }
     if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
@@ -237,8 +243,8 @@ router.post("/battles", requireAuth, async (req: any, res) => {
       costPerPlayer += casesById[id].price;
     }
 
-    // Creator only pays for their own slot — bots are free (house-funded)
-    const totalCreatorCost = costPerPlayer;
+    // Creator only pays for their own slot — bots are free (house-funded); borrow reduces upfront cost
+    const totalCreatorCost = Math.floor(costPerPlayer * (1 - borrowPercent / 100));
     if (req.user.balance < totalCreatorCost) {
       res.status(400).json({ error: `Insufficient balance (need ${totalCreatorCost} 💎)` }); return;
     }
@@ -270,7 +276,7 @@ router.post("/battles", requireAuth, async (req: any, res) => {
       if (effectiveBattleType === "shared") {
         await payShared(updatedPlayers, totalPrize);
       } else {
-        await payWinners(updatedPlayers, winnerTeamIndex, totalPrize);
+        await payWinners(updatedPlayers, winnerTeamIndex, totalPrize, borrowPercent, req.user.id);
       }
 
       const [battle] = await db.insert(battlesTable).values({
@@ -280,6 +286,7 @@ router.post("/battles", requireAuth, async (req: any, res) => {
         totalValue: costPerPlayer,
         gameMode,
         battleType: effectiveBattleType,
+        borrowPercent,
         status: "completed",
         isDraw,
         winnerId: effectiveBattleType === "shared" ? undefined : (winnerPlayer?.userId && winnerPlayer.userId > 0 ? winnerPlayer.userId : undefined),
@@ -297,6 +304,7 @@ router.post("/battles", requireAuth, async (req: any, res) => {
         totalValue: costPerPlayer,
         gameMode,
         battleType: effectiveBattleType,
+        borrowPercent,
         status: "waiting",
         rounds: [],
       }).returning();
@@ -350,14 +358,16 @@ router.post("/battles/:id/join", requireAuth, async (req: any, res) => {
 
     let updatedBattle: any;
     const effectiveBattleType = battle.battleType ?? (battle.isShared ? "shared" : "normal");
+    const battleBorrowPercent = battle.borrowPercent ?? 0;
     if (players.length === battle.maxPlayers) {
       const sortedPlayers = [...players].sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0));
+      const creatorPlayer = sortedPlayers.find((p) => (p.slotIndex ?? 0) === 0);
       const { rounds, updatedPlayers, winnerTeamIndex, winnerPlayer, isDraw } = runBattle(sortedPlayers, caseIds, casesById, effectiveBattleType);
       const totalPrize = costPerPlayer * battle.maxPlayers;
       if (effectiveBattleType === "shared") {
         await payShared(updatedPlayers, totalPrize);
       } else {
-        await payWinners(updatedPlayers, winnerTeamIndex, totalPrize);
+        await payWinners(updatedPlayers, winnerTeamIndex, totalPrize, battleBorrowPercent, creatorPlayer?.userId);
       }
 
       [updatedBattle] = await db.update(battlesTable).set({

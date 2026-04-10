@@ -14,6 +14,7 @@ export const battlesTable = pgTable("battles", {
   battleType: text("battle_type").notNull().default("normal"),
   rounds: jsonb("rounds").notNull().$type<BattleRound[]>().default([]),
   isDraw: boolean("is_draw").notNull().default(false),
+  borrowPercent: integer("borrow_percent").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });

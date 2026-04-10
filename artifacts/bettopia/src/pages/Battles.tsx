@@ -36,6 +36,7 @@ export default function Battles() {
   const [caseToAdd, setCaseToAdd] = useState<string>("");
   const [gameMode, setGameMode] = useState<string>("1v1");
   const [battleType, setBattleType] = useState<string>("normal");
+  const [borrowPercent, setBorrowPercent] = useState<number>(0);
   const [isModifyMode, setIsModifyMode] = useState(false);
 
   const GAME_MODES = [
@@ -86,12 +87,13 @@ export default function Battles() {
       return;
     }
     if (selectedCases.length === 0) return;
-    createMutation.mutate({ data: { caseIds: selectedCases.map(Number), gameMode, battleType } as any }, {
+    createMutation.mutate({ data: { caseIds: selectedCases.map(Number), gameMode, battleType, borrowPercent } as any }, {
       onSuccess: (result: any) => {
         setCreateDialogOpen(false);
         setSelectedCases([]);
         setCaseToAdd("");
         setBattleType("normal");
+        setBorrowPercent(0);
         setIsModifyMode(false);
         refreshUser();
         setActiveBattleIsCreator(true);
@@ -220,11 +222,13 @@ export default function Battles() {
             setBattleType={setBattleType}
             gameMode={gameMode}
             setGameMode={setGameMode}
+            borrowPercent={borrowPercent}
+            setBorrowPercent={setBorrowPercent}
             handleCreate={handleCreate}
             createPending={createMutation.isPending}
             isModifyMode={isModifyMode}
             user={user}
-            onBack={() => { setCreateDialogOpen(false); setSelectedCases([]); setBattleType("normal"); setIsModifyMode(false); setCaseToAdd(""); }}
+            onBack={() => { setCreateDialogOpen(false); setSelectedCases([]); setBattleType("normal"); setBorrowPercent(0); setIsModifyMode(false); setCaseToAdd(""); }}
           />
         ) : (
           <>
@@ -407,6 +411,7 @@ function CreateBattleView({
   cases, selectedCases, setSelectedCases,
   battleType, setBattleType,
   gameMode, setGameMode,
+  borrowPercent, setBorrowPercent,
   handleCreate, createPending, isModifyMode, user, onBack
 }: {
   cases: any[];
@@ -416,6 +421,8 @@ function CreateBattleView({
   setBattleType: (t: string) => void;
   gameMode: string;
   setGameMode: (m: string) => void;
+  borrowPercent: number;
+  setBorrowPercent: (v: number) => void;
   handleCreate: () => void;
   createPending: boolean;
   isModifyMode: boolean;
@@ -684,15 +691,52 @@ function CreateBattleView({
             </div>
           </div>
 
+          {/* Borrow */}
+          <div className="bg-card/60 border border-border rounded-2xl p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Borrow</span>
+              {borrowPercent > 0 && (
+                <span className="text-xs text-orange-300 font-semibold">You receive {100 - borrowPercent}% of winnings</span>
+              )}
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[0, 20, 40, 60, 80].map(pct => (
+                <button
+                  key={pct}
+                  onClick={() => setBorrowPercent(pct)}
+                  className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                    borrowPercent === pct
+                      ? "border-orange-500 bg-orange-500/15 text-orange-300"
+                      : "border-border bg-background/40 text-muted-foreground hover:border-orange-500/40 hover:text-foreground"
+                  }`}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+            {borrowPercent > 0 && (
+              <p className="text-[11px] text-muted-foreground/60 leading-snug">
+                Pay {100 - borrowPercent}% upfront. If you win, you only receive {100 - borrowPercent}% of the prize.
+              </p>
+            )}
+          </div>
+
           {/* Cost + create */}
           <div className="bg-card/60 border border-border rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Entry cost</span>
-              <span className="font-bold text-primary flex items-center gap-1">{formatBalance(totalCost)} <GemIcon size={12} /></span>
+              <span className="text-muted-foreground">Your price</span>
+              <div className="flex items-center gap-1.5">
+                {borrowPercent > 0 && (
+                  <span className="text-xs text-muted-foreground/50 line-through flex items-center gap-0.5">{formatBalance(totalCost)} <GemIcon size={9} /></span>
+                )}
+                <span className="font-bold text-primary flex items-center gap-1">{formatBalance(Math.floor(totalCost * (1 - borrowPercent / 100)))} <GemIcon size={12} /></span>
+              </div>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Prize pool</span>
-              <span className="font-bold flex items-center gap-1">{formatBalance(totalCost * playerCount)} <GemIcon size={12} /></span>
+              <span className="text-muted-foreground">{borrowPercent > 0 ? "Your max win" : "Prize pool"}</span>
+              <span className={`font-bold flex items-center gap-1 ${borrowPercent > 0 ? "text-orange-300" : ""}`}>
+                {formatBalance(Math.floor(totalCost * playerCount * (borrowPercent > 0 ? (1 - borrowPercent / 100) : 1)))} <GemIcon size={12} />
+              </span>
             </div>
             <Button
               onClick={handleCreate}
