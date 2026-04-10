@@ -123,7 +123,7 @@ const Cell: React.FC<CellProps> = ({ sym, multVal, highlighted, removing, spinni
 // ── Main component ───────────────────────────────────────────
 export default function SweetBonanzaGame() {
   const { user, updateUser } = useAuth();
-  const { format } = useCurrency();
+  const { formatBalance: format } = useCurrency();
 
   const [grid, setGrid] = useState<number[][]>(EMPTY_GRID);
   const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
