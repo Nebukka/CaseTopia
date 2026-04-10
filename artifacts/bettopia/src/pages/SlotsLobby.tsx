@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Link } from "wouter";
 import { Layout } from "../components/Layout";
-import { PP_GAMES, getVolatilityColor } from "../data/ppGames";
+import { CASINO_GAMES, getVolatilityColor } from "../data/casinoGames";
 
 export default function SlotsLobby() {
-  const [filter, setFilter] = useState<"all" | "high" | "very-high" | "low" | "medium">("all");
+  const [filter, setFilter] = useState<"all" | "high" | "very-high" | "low" | "medium" | "variable">("all");
 
   const filtered = filter === "all"
-    ? PP_GAMES
-    : PP_GAMES.filter(g => g.volatility === filter);
+    ? CASINO_GAMES
+    : CASINO_GAMES.filter(g => g.volatility === filter);
 
   return (
     <Layout>
@@ -17,12 +17,12 @@ export default function SlotsLobby() {
           <div>
             <h1 className="text-3xl font-bold">Slots</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {PP_GAMES.length} games · Pragmatic Play
+              {CASINO_GAMES.length} games · BGaming
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {(["all", "low", "medium", "high", "very-high"] as const).map(v => (
+            {(["all", "low", "medium", "high", "very-high", "variable"] as const).map(v => (
               <button
                 key={v}
                 onClick={() => setFilter(v)}
@@ -60,7 +60,7 @@ export default function SlotsLobby() {
                 <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
                   <h3 className="text-sm font-bold text-white leading-tight line-clamp-2">{game.name}</h3>
                   <p className="text-[10px] text-white/50 mt-0.5">
-                    {game.ways ? `${game.ways.toLocaleString()} ways` : `${game.lines} lines`}
+                    {game.ways ? `${game.ways.toLocaleString()} ways` : game.lines ? `${game.lines} lines` : "Instant Win"}
                   </p>
                 </div>
               </div>
