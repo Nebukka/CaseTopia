@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Package, Crown, Bot, Loader2, LogOut, Volume2, VolumeX, Copy, Pencil, Share2, Eye } from "lucide-react";
-import { GemIcon } from "./GemIcon";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { useCurrency, CURRENCY_ICON, CURRENCY_LABEL } from "../contexts/CurrencyContext";
 import bigOrbSrc from "@assets/legendary_orb_1775536735371.webp";
 import orbPlaceholderSrc from "@assets/legendary_orb_1775538080736.webp";
 
@@ -16,7 +16,7 @@ interface BattleItem {
 interface CaseItem extends BattleItem { chance: number; }
 interface BattlePlayer {
   userId: string; username: string; teamIndex: number; slotIndex: number;
-  items: BattleItem[]; totalValue: number; isBot?: boolean;
+  items: BattleItem[]; totalValue: number; isBot?: boolean; avatar?: string;
 }
 interface BattleRound {
   roundNumber: number; caseId: number;
@@ -63,19 +63,14 @@ function buildStrip(caseItems: CaseItem[], result: BattleItem, resultIsRare: boo
   return strip;
 }
 
-// ─── Currency ──────────────────────────────────────────────────────────────────
+// ─── Currency (uses useCurrency hook — respects user's selected currency) ──────
 
 function Val({ value, size=11 }: { value:number; size?:number }) {
-  let n:number, unit:string;
-  if (value>=100)    { n=+(value/100).toFixed(2); unit="BGL"; }
-  else if (value>=1) { n=+value.toFixed(2);        unit="DL"; }
-  else               { n=Math.round(value*100);    unit="WL"; }
+  const { formatBalance, currency, iconSrc } = useCurrency();
   return (
     <span className="flex items-center gap-0.5 font-bold tabular-nums">
-      {n.toLocaleString()}
-      {unit==="BGL"?<span className="text-yellow-400 font-black" style={{fontSize:size}}>BGL</span>
-      :unit==="WL"?<span className="text-blue-400 font-bold" style={{fontSize:size}}>WL</span>
-      :<GemIcon size={size}/>}
+      {formatBalance(value)}
+      <img src={iconSrc} alt={CURRENCY_LABEL[currency]} style={{width:size,height:size,objectFit:"contain",imageRendering:"pixelated",flexShrink:0}}/>
     </span>
   );
 }
@@ -159,11 +154,12 @@ function VertReelColumn({ caseItems, result, resultChance, audioCtx, mutedRef, o
   const [orbShow, setOrbShow] = useState(false);
   const [bonusLbl, setBonusLbl] = useState(false);
 
-  const stripRef = useRef<HTMLDivElement>(null);
-  const rafRef   = useRef<number>(0);
-  const allRafs  = useRef<number[]>([]);
-  const timers   = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const lastIdx  = useRef(-1);
+  const stripRef   = useRef<HTMLDivElement>(null);
+  const rafRef     = useRef<number>(0);
+  const allRafs    = useRef<number[]>([]);
+  const timers     = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const lastIdx    = useRef(-1);
+  const lastTickMs = useRef(0); // throttle: min 50ms between tick sounds
 
   const later = (fn:()=>void, ms:number) => { const id=setTimeout(fn,ms); timers.current.push(id); return id; };
   const startTick = (el:HTMLDivElement) => {
@@ -174,7 +170,11 @@ function VertReelColumn({ caseItems, result, resultChance, audioCtx, mutedRef, o
         const vals=mat.match(/matrix.*\((.+)\)/)?.[1].split(",");
         const rawY=vals?Math.abs(parseFloat(vals[5]??"0")):0;
         const idx=Math.floor(rawY/VERT_ITEM_H);
-        if(idx!==lastIdx.current&&idx>0&&audioCtx){lastIdx.current=idx;playTick(audioCtx,mutedRef.current);}
+        if(idx!==lastIdx.current&&idx>0&&audioCtx){
+          lastIdx.current=idx;
+          const now=performance.now();
+          if(now-lastTickMs.current>=50){ lastTickMs.current=now; playTick(audioCtx,mutedRef.current); }
+        }
       }
       rafRef.current=requestAnimationFrame(loop);
     };
@@ -598,9 +598,11 @@ export function BattleScreen({ battle:initialBattle, currentUserId, isCreator=fa
                           <div key={slotIdx} className={`flex-1 flex flex-col items-center gap-2 rounded-xl border-2 p-3 min-w-0 transition-all ${
                             player?`${tc.border} ${tc.bg}`:"border-dashed border-border/30 bg-background/20"}`}>
                             {/* Avatar */}
-                            <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center font-black text-2xl flex-shrink-0 ${
+                            <div className={`w-16 h-16 rounded-full border-2 overflow-hidden flex items-center justify-center font-black text-2xl flex-shrink-0 ${
                               player?`${tc.border} ${tc.bg} ${tc.text}`:"border-border/30 text-muted-foreground/20 bg-background/10"}`}>
-                              {player?player.username.charAt(0).toUpperCase():"+"}
+                              {player?.avatar
+                                ?<img src={player.avatar} alt={player.username} className="w-full h-full object-cover"/>
+                                :player?player.username.charAt(0).toUpperCase():"+"}
                             </div>
                             {/* Name */}
                             <div className={`text-sm font-bold truncate w-full text-center ${player?tc.text:"text-muted-foreground/40"}`}>
