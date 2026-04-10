@@ -37,7 +37,6 @@ export default function Battles() {
   const [gameMode, setGameMode] = useState<string>("1v1");
   const [battleType, setBattleType] = useState<string>("normal");
   const [isModifyMode, setIsModifyMode] = useState(false);
-  const [showCasePicker, setShowCasePicker] = useState(false);
 
   const GAME_MODES = [
     { value: "1v1",   label: "1 vs 1",     players: 2, teams: 2, ppTeam: 1, desc: "2 players, winner takes all" },
@@ -388,18 +387,18 @@ export default function Battles() {
 // ─── Create Battle Full-Page View ────────────────────────────────────────────
 
 const CREATE_BATTLE_TYPES = [
-  { value: "normal",   label: "Normal",   desc: "Highest total wins",         color: "violet",  border: "border-primary/60  bg-primary/10  text-primary"  },
-  { value: "shared",   label: "Shared",   desc: "Prize split equally",        color: "cyan",    border: "border-cyan-500/60 bg-cyan-500/10 text-cyan-300" },
-  { value: "top_pull", label: "Top Pull", desc: "Best single item wins",       color: "yellow",  border: "border-yellow-500/60 bg-yellow-500/10 text-yellow-300" },
-  { value: "terminal", label: "Terminal", desc: "Last case decides the winner", color: "orange",  border: "border-orange-500/60 bg-orange-500/10 text-orange-300" },
+  { value: "normal",   label: "Normal",   icon: "⚔️",  desc: "Highest total wins",          active: "border-primary bg-primary/15 text-primary" },
+  { value: "shared",   label: "Shared",   icon: "🤝",  desc: "Prize split equally",         active: "border-cyan-500 bg-cyan-500/15 text-cyan-300" },
+  { value: "top_pull", label: "Top Pull", icon: "🏆",  desc: "Best single item wins",        active: "border-yellow-500 bg-yellow-500/15 text-yellow-300" },
+  { value: "terminal", label: "Terminal", icon: "💀",  desc: "Last case decides the winner", active: "border-orange-500 bg-orange-500/15 text-orange-300" },
 ];
 
 const CREATE_GAME_MODES = [
-  { value: "1v1",     label: "1v1",     players: 2, desc: "2 players" },
-  { value: "1v1v1",   label: "1v1v1",   players: 3, desc: "3 players" },
-  { value: "1v1v1v1", label: "1v1v1v1", players: 4, desc: "4-way FFA" },
-  { value: "2v2",     label: "2v2",     players: 4, desc: "2 teams" },
-  { value: "2v2v2",   label: "2v2v2",   players: 6, desc: "3 teams" },
+  { value: "1v1",     label: "1v1",     players: 2 },
+  { value: "1v1v1",   label: "1v1v1",   players: 3 },
+  { value: "1v1v1v1", label: "1v1v1v1", players: 4 },
+  { value: "2v2",     label: "2v2",     players: 4 },
+  { value: "2v2v2",   label: "2v2v2",   players: 6 },
 ];
 
 function CreateBattleView({
@@ -421,11 +420,8 @@ function CreateBattleView({
   user: any;
   onBack: () => void;
 }) {
-  const [showCasePicker, setShowCasePicker] = useState(false);
   const [caseSearch, setCaseSearch] = useState("");
   const [caseCategory, setCaseCategory] = useState<"original" | "community" | "favourite">("original");
-  const [pendingCase, setPendingCase] = useState<any>(null);
-  const [pendingQty, setPendingQty] = useState(1);
   const { formatBalance } = useCurrency();
 
   const favouriteIds = (() => {
@@ -451,281 +447,249 @@ function CreateBattleView({
     !caseSearch || c.name.toLowerCase().includes(caseSearch.toLowerCase())
   );
 
+  const playerCount = CREATE_GAME_MODES.find(m => m.value === gameMode)?.players ?? 2;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <h1 className="text-2xl font-bold">{isModifyMode ? "Modify Battle" : "Create case battle"}</h1>
-        <div className="text-sm text-muted-foreground flex items-center gap-1.5">
-          Cost: <span className="font-bold text-primary">{formatBalance(totalCost)}</span> <GemIcon size={13} />
-        </div>
+        <div className="h-4 w-px bg-border" />
+        <h1 className="text-xl font-bold">{isModifyMode ? "Modify Battle" : "Create Battle"}</h1>
       </div>
 
-      {/* Cases area */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-muted-foreground font-medium">
-            {selectedCases.length === 0 ? "No cases selected" : `${selectedCases.length} case${selectedCases.length !== 1 ? "s" : ""} selected`}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {(() => {
-            const grouped: { cid: string; count: number }[] = [];
-            for (const cid of selectedCases) {
-              const existing = grouped.find((g) => g.cid === cid);
-              if (existing) { existing.count++; } else { grouped.push({ cid, count: 1 }); }
-            }
-            return grouped.map(({ cid, count }) => {
-              const c = cases.find((x: any) => String(x.id) === String(cid));
-              return (
-                <div
-                  key={cid}
-                  className="relative group w-28 h-28 flex flex-col items-center justify-center bg-card border border-border rounded-xl overflow-hidden transition-all hover:border-primary/40"
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+
+        {/* ── LEFT: Case browser ── */}
+        <div className="space-y-4">
+
+          {/* Selected cases row */}
+          <div className="bg-card/60 border border-border rounded-2xl p-4 min-h-[120px]">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Selected Cases</span>
+              {selectedCases.length > 0 && (
+                <button
+                  onClick={() => setSelectedCases([])}
+                  className="text-xs text-muted-foreground hover:text-red-400 transition-colors"
                 >
-                  {/* Count badge */}
-                  {count > 1 && (
-                    <div className="absolute top-1 left-1 min-w-[20px] h-5 px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center z-10">
-                      ×{count}
-                    </div>
-                  )}
-                  <div className="w-14 h-14 flex items-center justify-center">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Swords className="w-6 h-6 text-primary/60" />
-                    </div>
-                  </div>
-                  <div className="text-xs font-semibold text-center px-1 leading-tight truncate w-full text-center">{c?.name ?? cid}</div>
-                  <div className="text-xs text-primary flex items-center gap-0.5">{formatBalance((c?.price ?? 0) * count)} <GemIcon size={9} /></div>
-                  {/* Controls on hover */}
-                  <div className="absolute inset-0 hidden group-hover:flex items-end justify-between p-1 bg-black/10">
-                    {/* Remove one */}
-                    <button
-                      onClick={() => setSelectedCases((prev) => {
-                        const idx = prev.lastIndexOf(cid);
-                        return idx !== -1 ? prev.filter((_, i) => i !== idx) : prev;
-                      })}
-                      className="w-6 h-6 rounded-full bg-muted/90 text-foreground flex items-center justify-center text-sm font-bold hover:bg-muted leading-none"
-                      title="Remove one"
-                    >
-                      −
-                    </button>
-                    {/* Remove all */}
-                    <button
-                      onClick={() => setSelectedCases((prev) => prev.filter((id) => id !== cid))}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center text-xs"
-                      title="Remove all"
-                    >
-                      ×
-                    </button>
-                  </div>
+                  Clear all
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 min-h-[64px] items-start">
+              {selectedCases.length === 0 ? (
+                <div className="w-full flex items-center justify-center text-muted-foreground/40 text-sm italic py-4">
+                  Click a case below to add it
                 </div>
-              );
-            });
-          })()}
-
-          {/* ADD CASE tile */}
-          <button
-            onClick={() => setShowCasePicker(true)}
-            className="w-28 h-28 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-border hover:border-primary/60 rounded-xl transition-all text-muted-foreground hover:text-primary group"
-          >
-            <div className="w-10 h-10 rounded-full border-2 border-dashed border-current flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Plus className="w-5 h-5" />
+              ) : (() => {
+                const grouped: { cid: string; count: number }[] = [];
+                for (const cid of selectedCases) {
+                  const existing = grouped.find(g => g.cid === cid);
+                  if (existing) { existing.count++; } else { grouped.push({ cid, count: 1 }); }
+                }
+                return grouped.map(({ cid, count }) => {
+                  const c = cases.find((x: any) => String(x.id) === String(cid));
+                  return (
+                    <div key={cid} className="relative group flex items-center gap-2 bg-background/60 border border-border hover:border-primary/40 rounded-xl px-3 py-2 transition-all">
+                      <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Swords className="w-3.5 h-3.5 text-primary/70" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold truncate max-w-[90px]">{c?.name ?? cid}</div>
+                        <div className="text-xs text-primary flex items-center gap-0.5">{formatBalance((c?.price ?? 0) * count)} <GemIcon size={8} /></div>
+                      </div>
+                      {count > 1 && (
+                        <span className="text-xs font-bold text-muted-foreground">×{count}</span>
+                      )}
+                      {/* Controls */}
+                      <div className="hidden group-hover:flex items-center gap-1 ml-1">
+                        <button
+                          onClick={() => setSelectedCases(prev => { const idx = prev.lastIndexOf(cid); return idx !== -1 ? prev.filter((_, i) => i !== idx) : prev; })}
+                          className="w-5 h-5 rounded bg-muted hover:bg-muted/80 text-xs font-bold flex items-center justify-center leading-none"
+                          title="Remove one"
+                        >−</button>
+                        <button
+                          onClick={() => setSelectedCases(prev => [...prev, cid])}
+                          className="w-5 h-5 rounded bg-muted hover:bg-muted/80 text-xs font-bold flex items-center justify-center leading-none"
+                          title="Add one more"
+                        >+</button>
+                        <button
+                          onClick={() => setSelectedCases(prev => prev.filter(id => id !== cid))}
+                          className="w-5 h-5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold flex items-center justify-center"
+                          title="Remove all"
+                        >×</button>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wide">Add Case</span>
-          </button>
-        </div>
-      </div>
+          </div>
 
-      {/* Case picker overlay */}
-      {showCasePicker && (
-        <div
-          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => { setShowCasePicker(false); setPendingCase(null); setPendingQty(1); }}
-        >
-          <div className="bg-card border border-border rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Select Case</h3>
-              <button
-                onClick={() => { setShowCasePicker(false); setPendingCase(null); setPendingQty(1); }}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Category tabs */}
-            <div className="p-3 border-b border-border grid grid-cols-3 gap-2">
-              <button
-                onClick={() => { setCaseCategory("original"); setCaseSearch(""); setPendingCase(null); setPendingQty(1); }}
-                className={`flex flex-col items-start px-3 py-2.5 rounded-xl border transition-all ${caseCategory === "original" ? "border-primary bg-primary/15 text-primary" : "border-border bg-background/40 text-muted-foreground hover:border-primary/40"}`}
-              >
-                <div className="flex items-center gap-1.5 font-semibold text-sm"><Lock className="w-3.5 h-3.5" /> Original</div>
-                <div className="text-xs opacity-70 mt-0.5">CaseTopia cases</div>
-              </button>
-              <button
-                onClick={() => { setCaseCategory("community"); setCaseSearch(""); setPendingCase(null); setPendingQty(1); }}
-                className={`flex flex-col items-start px-3 py-2.5 rounded-xl border transition-all ${caseCategory === "community" ? "border-green-500 bg-green-500/15 text-green-400" : "border-border bg-background/40 text-muted-foreground hover:border-green-500/40"}`}
-              >
-                <div className="flex items-center gap-1.5 font-semibold text-sm"><Users className="w-3.5 h-3.5" /> Community</div>
-                <div className="text-xs opacity-70 mt-0.5">Player-made</div>
-              </button>
-              <button
-                onClick={() => { setCaseCategory("favourite"); setCaseSearch(""); setPendingCase(null); setPendingQty(1); }}
-                className={`flex flex-col items-start px-3 py-2.5 rounded-xl border transition-all ${caseCategory === "favourite" ? "border-yellow-400 bg-yellow-400/15 text-yellow-400" : "border-border bg-background/40 text-muted-foreground hover:border-yellow-400/40"}`}
-              >
-                <div className="flex items-center gap-1.5 font-semibold text-sm"><Star className="w-3.5 h-3.5" /> Favourite</div>
-                <div className="text-xs opacity-70 mt-0.5">Your starred</div>
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="px-3 py-2.5 border-b border-border">
+          {/* Case browser */}
+          <div className="bg-card/60 border border-border rounded-2xl overflow-hidden">
+            {/* Category tabs + search */}
+            <div className="p-3 border-b border-border flex items-center gap-2 flex-wrap">
+              <div className="flex gap-1 bg-muted/30 rounded-lg p-0.5">
+                {([
+                  { key: "original",  label: "Original",  icon: <Lock className="w-3 h-3" /> },
+                  { key: "community", label: "Community",  icon: <Users className="w-3 h-3" /> },
+                  { key: "favourite", label: "Starred",    icon: <Star className="w-3 h-3" /> },
+                ] as const).map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => { setCaseCategory(tab.key); setCaseSearch(""); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                      caseCategory === tab.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
               <input
-                className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/60"
-                placeholder={`Search ${caseCategory} cases...`}
+                className="flex-1 min-w-[120px] bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary/60"
+                placeholder="Search cases..."
                 value={caseSearch}
-                onChange={(e) => setCaseSearch(e.target.value)}
-                autoFocus
+                onChange={e => setCaseSearch(e.target.value)}
               />
             </div>
 
-            {/* Case list */}
-            <div className="overflow-y-auto flex-1 p-3 space-y-1.5">
+            {/* Cases grid */}
+            <div className="overflow-y-auto max-h-[380px] p-3">
               {filteredCases.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  {caseCategory === "favourite" ? "No favourited cases yet — star some from the Cases page" : "No cases found"}
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  {caseCategory === "favourite" ? "No starred cases yet" : "No cases found"}
                 </div>
               ) : (
-                filteredCases.map((c: any) => {
-                  const isSelected = pendingCase?.id === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => { setPendingCase(c); setPendingQty(1); }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-left border ${
-                        isSelected
-                          ? "border-primary bg-primary/15"
-                          : "border-transparent hover:bg-primary/10"
-                      }`}
-                    >
-                      <div>
-                        <div className="font-semibold text-sm flex items-center gap-1.5">
-                          {c.name}
-                          {favouriteIds.has(String(c.id)) && <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {filteredCases.map((c: any) => {
+                    const countInBattle = selectedCases.filter(id => id === String(c.id)).length;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedCases(prev => [...prev, String(c.id)])}
+                        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all text-left hover:border-primary/60 hover:bg-primary/5 ${
+                          countInBattle > 0 ? "border-primary/40 bg-primary/5" : "border-border bg-background/40"
+                        }`}
+                      >
+                        {countInBattle > 0 && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                            {countInBattle}
+                          </div>
+                        )}
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Swords className="w-5 h-5 text-primary/60" />
                         </div>
-                        <div className="text-xs text-muted-foreground">{c.items?.length ?? 0} items{c.createdByName ? ` · by ${c.createdByName}` : ""}</div>
-                      </div>
-                      <div className="text-primary font-mono text-sm font-bold flex items-center gap-1">{formatBalance(c.price ?? 0)} <GemIcon size={11} /></div>
-                    </button>
-                  );
-                })
+                        <div className="text-xs font-semibold text-center leading-tight line-clamp-2 w-full">{c.name}</div>
+                        <div className="text-xs text-primary font-bold flex items-center gap-0.5">{formatBalance(c.price ?? 0)} <GemIcon size={8} /></div>
+                        {favouriteIds.has(String(c.id)) && (
+                          <Star className="absolute top-1.5 left-1.5 w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
-
-            {/* Staging footer — shown when a case is selected */}
-            {pendingCase && (
-              <div className="border-t border-border p-4 flex items-center gap-3 bg-background/60">
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm truncate">{pendingCase.name}</div>
-                  <div className="text-xs text-primary flex items-center gap-1">
-                    {formatBalance(pendingCase.price * pendingQty)} <GemIcon size={9} /> total
-                  </div>
-                </div>
-                {/* Quantity controls */}
-                <div className="flex items-center gap-2 bg-muted/40 border border-border rounded-lg px-2 py-1">
-                  <button
-                    onClick={() => setPendingQty((q) => Math.max(1, q - 1))}
-                    className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-bold text-lg leading-none"
-                  >
-                    −
-                  </button>
-                  <span className="w-6 text-center font-bold text-sm">{pendingQty}</span>
-                  <button
-                    onClick={() => setPendingQty((q) => Math.min(20, q + 1))}
-                    className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-bold text-lg leading-none"
-                  >
-                    +
-                  </button>
-                </div>
-                {/* Add button */}
-                <button
-                  onClick={() => {
-                    const toAdd = Array(pendingQty).fill(String(pendingCase.id));
-                    setSelectedCases((prev) => [...prev, ...toAdd]);
-                    setShowCasePicker(false);
-                    setCaseSearch("");
-                    setPendingCase(null);
-                    setPendingQty(1);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors flex-shrink-0"
-                >
-                  Add
-                </button>
-              </div>
-            )}
           </div>
         </div>
-      )}
 
-      {/* Type section */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Type</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {CREATE_BATTLE_TYPES.map((type) => (
-            <button
-              key={type.value}
-              onClick={() => setBattleType(type.value)}
-              className={`p-4 rounded-xl border-2 flex flex-col gap-2 text-left transition-all ${
-                battleType === type.value
-                  ? type.border
-                  : "border-border bg-card/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
+        {/* ── RIGHT: Settings panel ── */}
+        <div className="space-y-4">
+
+          {/* Player slot preview */}
+          <div className="bg-card/60 border border-border rounded-2xl p-4">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-3">Battle Preview</span>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {Array.from({ length: playerCount }).map((_, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <span className="text-muted-foreground/40 text-xs font-bold">VS</span>}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-10 h-10 rounded-full border-2 border-dashed border-primary/30 bg-primary/5 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-primary/40" />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/50">P{i + 1}</span>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* Game mode */}
+          <div className="bg-card/60 border border-border rounded-2xl p-4 space-y-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Format</span>
+            <div className="grid grid-cols-3 gap-1.5">
+              {CREATE_GAME_MODES.map(mode => (
+                <button
+                  key={mode.value}
+                  onClick={() => setGameMode(mode.value)}
+                  className={`py-2 rounded-xl text-sm font-bold transition-all border ${
+                    gameMode === mode.value
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Battle type */}
+          <div className="bg-card/60 border border-border rounded-2xl p-4 space-y-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Mode</span>
+            <div className="space-y-1.5">
+              {CREATE_BATTLE_TYPES.map(type => (
+                <button
+                  key={type.value}
+                  onClick={() => setBattleType(type.value)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                    battleType === type.value ? type.active : "border-border bg-background/40 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  }`}
+                >
+                  <span className="text-base leading-none">{type.icon}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold leading-none mb-0.5">{type.label}</div>
+                    <div className="text-xs opacity-65 leading-snug">{type.desc}</div>
+                  </div>
+                  {battleType === type.value && (
+                    <div className="ml-auto w-4 h-4 rounded-full border-2 border-current flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-current" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cost + create */}
+          <div className="bg-card/60 border border-border rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Entry cost</span>
+              <span className="font-bold text-primary flex items-center gap-1">{formatBalance(totalCost)} <GemIcon size={12} /></span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Prize pool</span>
+              <span className="font-bold flex items-center gap-1">{formatBalance(totalCost * playerCount)} <GemIcon size={12} /></span>
+            </div>
+            <Button
+              onClick={handleCreate}
+              disabled={selectedCases.length === 0 || createPending || !user}
+              className="w-full bg-primary hover:bg-primary/90 font-bold py-3 text-base"
             >
-              <div className="font-bold text-sm">{type.label}</div>
-              <div className="text-xs opacity-75 leading-snug">{type.desc}</div>
-            </button>
-          ))}
+              {createPending ? "Creating..." : isModifyMode ? "Create Modified Battle" : "Create Battle"}
+            </Button>
+            {!user && <p className="text-xs text-muted-foreground text-center">You must be logged in</p>}
+            {selectedCases.length === 0 && user && <p className="text-xs text-muted-foreground text-center">Add at least one case</p>}
+          </div>
         </div>
-      </div>
-
-      {/* Format */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Format</h2>
-        <div className="flex flex-wrap gap-2">
-          {CREATE_GAME_MODES.map((mode) => (
-            <button
-              key={mode.value}
-              onClick={() => setGameMode(mode.value)}
-              className={`px-4 py-2 rounded-lg border font-bold text-sm transition-all ${
-                gameMode === mode.value
-                  ? "border-primary bg-primary/15 text-primary"
-                  : "border-border bg-card/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
-            >
-              {mode.label}
-              <span className="block text-xs font-normal opacity-60">{mode.desc}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Create button */}
-      <div className="pt-2 flex items-center gap-4">
-        <Button
-          onClick={handleCreate}
-          disabled={selectedCases.length === 0 || createPending || !user}
-          className="bg-primary hover:bg-primary/90 font-bold px-8"
-        >
-          {createPending ? "Creating..." : isModifyMode ? "Create Modified Battle" : "Create Battle"}
-        </Button>
-        {!user && <span className="text-xs text-muted-foreground">You must be logged in</span>}
-        {selectedCases.length === 0 && user && <span className="text-xs text-muted-foreground">Add at least one case</span>}
       </div>
     </div>
   );
