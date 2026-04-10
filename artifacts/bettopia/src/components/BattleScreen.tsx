@@ -57,9 +57,12 @@ interface BattleResult {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TEAM_COLORS = [
-  { border: "border-blue-500",  bg: "bg-blue-500/10",  text: "text-blue-400",  glow: "shadow-[0_0_18px_rgba(59,130,246,0.5)]",  hex: "#3B82F6" },
-  { border: "border-red-500",   bg: "bg-red-500/10",   text: "text-red-400",   glow: "shadow-[0_0_18px_rgba(239,68,68,0.5)]",   hex: "#EF4444" },
-  { border: "border-green-500", bg: "bg-green-500/10", text: "text-green-400", glow: "shadow-[0_0_18px_rgba(34,197,94,0.5)]",   hex: "#22C55E" },
+  { border: "border-blue-500",  bg: "bg-blue-500/10",  text: "text-blue-400",  glow: "shadow-[0_0_18px_rgba(59,130,246,0.5)]",  hex: "#3B82F6", solid: "bg-blue-500" },
+  { border: "border-red-500",   bg: "bg-red-500/10",   text: "text-red-400",   glow: "shadow-[0_0_18px_rgba(239,68,68,0.5)]",   hex: "#EF4444", solid: "bg-red-500" },
+  { border: "border-green-500", bg: "bg-green-500/10", text: "text-green-400", glow: "shadow-[0_0_18px_rgba(34,197,94,0.5)]",   hex: "#22C55E", solid: "bg-green-500" },
+  { border: "border-yellow-500",bg: "bg-yellow-500/10",text: "text-yellow-400",glow: "shadow-[0_0_18px_rgba(234,179,8,0.5)]",   hex: "#EAB308", solid: "bg-yellow-500" },
+  { border: "border-pink-500",  bg: "bg-pink-500/10",  text: "text-pink-400",  glow: "shadow-[0_0_18px_rgba(236,72,153,0.5)]",  hex: "#EC4899", solid: "bg-pink-500" },
+  { border: "border-cyan-500",  bg: "bg-cyan-500/10",  text: "text-cyan-400",  glow: "shadow-[0_0_18px_rgba(6,182,212,0.5)]",   hex: "#06B6D4", solid: "bg-cyan-500" },
 ];
 
 const RARITY_COLOR: Record<string, string> = {
@@ -72,29 +75,34 @@ const RARITY_COLOR: Record<string, string> = {
   divine:    "#FFFFFF",
 };
 
-// Reel matches Cases.tsx exactly
-const REEL_BG     = "hsl(var(--sidebar))";
-const REEL_H      = 168;   // container height
-const ITEM_H      = 144;   // same as getVConfig() in Cases.tsx
-const ITEM_GAP    = 6;
-const STEP        = ITEM_H + ITEM_GAP;              // 150px per item
-const PADDING_TOP = Math.round((REEL_H - ITEM_H) / 2); // 12px
-const ITEM_COUNT  = 60;
+const REEL_BG   = "hsl(var(--sidebar))";
+const ITEM_GAP  = 6;
+const ITEM_COUNT = 60;
 const WINNING_IDX = 45;
-const LINE_COLOR  = "#a78bfa";
+const LINE_COLOR = "#a78bfa";
+
+// Dynamic reel dimensions based on players per team
+function getReelDims(playersPerTeam: number) {
+  if (playersPerTeam >= 3) return { reelH: 106, itemH: 82 };
+  if (playersPerTeam === 2) return { reelH: 130, itemH: 108 };
+  return { reelH: 168, itemH: 144 };
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getNumTeams(gameMode: string): number {
-  return ({ "1v1": 2, "1v1v1": 3, "2v2": 2, "2v2v2": 3, "3v3": 2 } as any)[gameMode] ?? 2;
+  const parts = gameMode.split("v").filter(Boolean);
+  return parts.length;
+}
+
+function getPlayersPerTeam(gameMode: string): number {
+  return parseInt(gameMode.split("v")[0], 10) || 1;
 }
 
 function buildStrip(caseItems: BattleItem[], result: BattleItem): BattleItem[] {
   const pool = caseItems.length > 0 ? caseItems : [result];
   const strip: BattleItem[] = [];
-  for (let i = 0; i < ITEM_COUNT; i++) {
-    strip.push(pool[Math.floor(Math.random() * pool.length)]);
-  }
+  for (let i = 0; i < ITEM_COUNT; i++) strip.push(pool[Math.floor(Math.random() * pool.length)]);
   strip[WINNING_IDX] = result;
   return strip;
 }
@@ -116,7 +124,7 @@ function ValDisplay({ value, size = 11 }: { value: number; size?: number }) {
   );
 }
 
-// ─── Audio — exact copy from Cases.tsx ───────────────────────────────────────
+// ─── Audio ───────────────────────────────────────────────────────────────────
 
 function createAudioCtx(): AudioContext | null {
   try { return new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { return null; }
@@ -183,42 +191,30 @@ function playWinSound(ctx: AudioContext, muted: boolean) {
   });
 }
 
-// ─── Vertical Reel Item — exact clone of VerticalReelItemBox from Cases.tsx ──
+// ─── Vertical Reel Item ───────────────────────────────────────────────────────
 
-function VertReelItem({ item }: { item: BattleItem }) {
+function VertReelItem({ item, itemH }: { item: BattleItem; itemH: number }) {
   const hex = RARITY_COLOR[item.rarity] ?? "#888";
-  const imgSz = 60; // same visual weight as "md" size in Cases
+  const imgSz = Math.round(itemH * 0.5);
   return (
-    <div className="flex-shrink-0" style={{ height: ITEM_H, width: "100%", position: "relative" }}>
-      {/* Top separator */}
+    <div className="flex-shrink-0" style={{ height: itemH, width: "100%", position: "relative" }}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "rgba(255,255,255,0.10)", zIndex: 2 }} />
-      {/* Card — left/right 3px rarity border, grey bg — EXACTLY as Cases.tsx */}
       <div
         className="flex items-center justify-center"
-        style={{
-          height: "100%",
-          width: "100%",
-          background: "rgba(255,255,255,0.04)",
-          borderLeft: `3px solid ${hex}`,
-          borderRight: `3px solid ${hex}`,
-        }}
+        style={{ height: "100%", width: "100%", background: "rgba(255,255,255,0.04)", borderLeft: `3px solid ${hex}`, borderRight: `3px solid ${hex}` }}
       >
         <div style={{ filter: `drop-shadow(0 0 8px ${hex}bb)` }}>
-          {item.imageUrl ? (
-            <img src={item.imageUrl} alt={item.name}
-              style={{ width: imgSz, height: imgSz, objectFit: "contain", imageRendering: "pixelated" }} />
-          ) : (
-            <div style={{ width: imgSz * 0.6, height: imgSz * 0.6, backgroundColor: hex, borderRadius: 4 }} />
-          )}
+          {item.imageUrl
+            ? <img src={item.imageUrl} alt={item.name} style={{ width: imgSz, height: imgSz, objectFit: "contain", imageRendering: "pixelated" }} />
+            : <div style={{ width: imgSz * 0.6, height: imgSz * 0.6, backgroundColor: hex, borderRadius: 4 }} />}
         </div>
       </div>
-      {/* Bottom separator */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 1, background: "rgba(255,255,255,0.10)", zIndex: 2 }} />
     </div>
   );
 }
 
-// ─── Vertical Reel — EXACTLY matches Cases.tsx vertical reel ─────────────────
+// ─── Vertical Reel ────────────────────────────────────────────────────────────
 
 interface VertReelProps {
   caseItems: BattleItem[];
@@ -226,31 +222,32 @@ interface VertReelProps {
   spin: boolean;
   audioCtx: AudioContext | null;
   mutedRef: React.MutableRefObject<boolean>;
+  reelH: number;
+  itemH: number;
 }
 
-function VertReel({ caseItems, result, spin, audioCtx, mutedRef }: VertReelProps) {
+function VertReel({ caseItems, result, spin, audioCtx, mutedRef, reelH, itemH }: VertReelProps) {
+  const step = itemH + ITEM_GAP;
+  const paddingTop = Math.round((reelH - itemH) / 2);
   const strip = useMemo(() => buildStrip(caseItems, result), []);
   const stripRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
   const lastTickIdx = useRef(-1);
 
-  // Start spin — translateY, same as Cases.tsx isVertical branch
   useEffect(() => {
     if (!spin || !stripRef.current) return;
     lastTickIdx.current = -1;
     const randomOffset = Math.floor(Math.random() * 60) - 30;
-    const target = WINNING_IDX * STEP + randomOffset;
+    const target = WINNING_IDX * step + randomOffset;
     stripRef.current.style.transition = `transform 2200ms cubic-bezier(0.08, 0.82, 0.15, 1)`;
     stripRef.current.style.transform = `translateY(-${target}px)`;
-
-    // Tick monitor — reads vals[5] for translateY (matrix col f)
     const el = stripRef.current;
     const loop = () => {
       const mat = window.getComputedStyle(el).transform;
       if (mat && mat !== "none") {
         const vals = mat.match(/matrix.*\((.+)\)/)?.[1].split(",");
         const rawY = vals ? parseFloat(vals[5] ?? "0") : 0;
-        const idx = Math.floor(Math.abs(rawY) / STEP);
+        const idx = Math.floor(Math.abs(rawY) / step);
         if (idx !== lastTickIdx.current && idx > 0 && audioCtx) {
           lastTickIdx.current = idx;
           playTick(audioCtx, mutedRef.current);
@@ -262,36 +259,25 @@ function VertReel({ caseItems, result, spin, audioCtx, mutedRef }: VertReelProps
     return () => cancelAnimationFrame(rafRef.current);
   }, [spin]);
 
-  // Stop — snap to exact center, play click
   useEffect(() => {
     if (spin || !stripRef.current) return;
     cancelAnimationFrame(rafRef.current);
     if (stripRef.current.style.transform) {
       stripRef.current.style.transition = `transform 300ms cubic-bezier(0.25, 0, 0, 1)`;
-      stripRef.current.style.transform = `translateY(-${WINNING_IDX * STEP}px)`;
+      stripRef.current.style.transform = `translateY(-${WINNING_IDX * step}px)`;
     }
     if (audioCtx) playStopClick(audioCtx, mutedRef.current);
   }, [spin]);
 
   return (
-    // Container — matches Cases.tsx vertical reel exactly
-    <div style={{ position: "relative", height: REEL_H, overflow: "hidden", borderRadius: 8, background: REEL_BG, width: "100%" }}>
-      {/* Top gradient — same 60px as Cases.tsx */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 60, background: `linear-gradient(to bottom, ${REEL_BG}, transparent)`, zIndex: 2, pointerEvents: "none" }} />
-      {/* Bottom gradient */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: `linear-gradient(to top, ${REEL_BG}, transparent)`, zIndex: 2, pointerEvents: "none" }} />
-      {/* Top selector line — at paddingTop - 1 = 11 */}
-      <div style={{ position: "absolute", top: PADDING_TOP - 1, left: 0, right: 0, height: 2, backgroundColor: LINE_COLOR, zIndex: 3, pointerEvents: "none", boxShadow: `0 0 8px ${LINE_COLOR}88` }} />
-      {/* Bottom selector line — at paddingTop + itemH - 1 = 155 */}
-      <div style={{ position: "absolute", top: PADDING_TOP + ITEM_H - 1, left: 0, right: 0, height: 2, backgroundColor: LINE_COLOR, zIndex: 3, pointerEvents: "none", boxShadow: `0 0 8px ${LINE_COLOR}88` }} />
-      {/* Middle selector line — at paddingTop + itemH/2 - 1 = 83 (zIndex 99, on top) */}
-      <div style={{ position: "absolute", top: PADDING_TOP + Math.round(ITEM_H / 2) - 1, left: 0, right: 0, height: 2, backgroundColor: LINE_COLOR, zIndex: 99, pointerEvents: "none", boxShadow: `0 0 8px ${LINE_COLOR}88` }} />
-      {/* Strip — flex column, paddingTop 12 centres item 0 in 168px container */}
-      <div
-        ref={stripRef}
-        style={{ display: "flex", flexDirection: "column", gap: ITEM_GAP, paddingTop: PADDING_TOP, willChange: "transform" }}
-      >
-        {strip.map((item, i) => <VertReelItem key={i} item={item} />)}
+    <div style={{ position: "relative", height: reelH, overflow: "hidden", borderRadius: 8, background: REEL_BG, width: "100%" }}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 50, background: `linear-gradient(to bottom, ${REEL_BG}, transparent)`, zIndex: 2, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 50, background: `linear-gradient(to top, ${REEL_BG}, transparent)`, zIndex: 2, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: paddingTop - 1, left: 0, right: 0, height: 2, backgroundColor: LINE_COLOR, zIndex: 3, pointerEvents: "none", boxShadow: `0 0 8px ${LINE_COLOR}88` }} />
+      <div style={{ position: "absolute", top: paddingTop + itemH - 1, left: 0, right: 0, height: 2, backgroundColor: LINE_COLOR, zIndex: 3, pointerEvents: "none", boxShadow: `0 0 8px ${LINE_COLOR}88` }} />
+      <div style={{ position: "absolute", top: paddingTop + Math.round(itemH / 2) - 1, left: 0, right: 0, height: 2, backgroundColor: LINE_COLOR, zIndex: 99, pointerEvents: "none", boxShadow: `0 0 8px ${LINE_COLOR}88` }} />
+      <div ref={stripRef} style={{ display: "flex", flexDirection: "column", gap: ITEM_GAP, paddingTop, willChange: "transform" }}>
+        {strip.map((item, i) => <VertReelItem key={i} item={item} itemH={itemH} />)}
       </div>
     </div>
   );
@@ -311,86 +297,70 @@ interface PlayerColProps {
   round: number;
   audioCtx: AudioContext | null;
   mutedRef: React.MutableRefObject<boolean>;
+  reelH: number;
+  itemH: number;
+  compact: boolean;
 }
 
-function PlayerColumn({ player, caseItems, currentRoundResult, revealedItems, spinning, isWinner, isLoser, showWinner, round, audioCtx, mutedRef }: PlayerColProps) {
-  const tc = TEAM_COLORS[player.teamIndex] ?? TEAM_COLORS[0];
+function PlayerColumn({ player, caseItems, currentRoundResult, revealedItems, spinning, isWinner, isLoser, showWinner, round, audioCtx, mutedRef, reelH, itemH, compact }: PlayerColProps) {
+  const tc = TEAM_COLORS[player.teamIndex % TEAM_COLORS.length] ?? TEAM_COLORS[0];
   const rc = currentRoundResult ? (RARITY_COLOR[currentRoundResult.rarity] ?? "#888") : undefined;
 
   return (
-    <div
-      className={`flex flex-col flex-1 min-w-0 border-r border-border/10 last:border-r-0 transition-all duration-500 ${
-        showWinner && isLoser ? "opacity-30" : ""
-      }`}
-    >
+    <div className={`flex flex-col flex-1 min-w-0 transition-all duration-500 ${showWinner && isLoser ? "opacity-30" : ""}`}>
       {/* Player name + total */}
       <div className={`flex items-center justify-between gap-1 px-2 py-1.5 border-b border-border/10 flex-shrink-0 ${showWinner && isWinner ? tc.bg : ""}`}>
         <div className="flex items-center gap-1.5 min-w-0">
           <div className={`w-5 h-5 rounded-full border-2 ${tc.border} ${tc.bg} flex items-center justify-center font-black text-[10px] flex-shrink-0 ${tc.text}`}>
             {player.username.charAt(0).toUpperCase()}
           </div>
-          <span className={`text-[11px] font-bold truncate ${tc.text}`}>{player.username}</span>
+          <span className={`${compact ? "text-[10px]" : "text-[11px]"} font-bold truncate ${tc.text}`}>{player.username}</span>
           {showWinner && isWinner && <Crown className="w-3 h-3 text-yellow-400 fill-yellow-400 flex-shrink-0" />}
           {player.isBot && <Bot className="w-2.5 h-2.5 text-muted-foreground/40 flex-shrink-0" />}
         </div>
-        <span className="text-[10px] flex-shrink-0 text-muted-foreground"><ValDisplay value={player.totalValue} size={9} /></span>
+        <span className="text-[9px] flex-shrink-0 text-muted-foreground"><ValDisplay value={player.totalValue} size={8} /></span>
       </div>
 
-      {/* Reel — REEL_H (168px) tall, matches Cases.tsx vertical reel */}
-      <div
-        className={`flex-shrink-0 px-2 py-2 transition-all duration-500 ${showWinner && isWinner ? `ring-2 ring-inset ${tc.border} ${tc.glow}` : ""}`}
-        style={{ background: REEL_BG }}
-      >
+      {/* Reel */}
+      <div className={`flex-shrink-0 px-1.5 py-1.5 transition-all duration-500 ${showWinner && isWinner ? `ring-2 ring-inset ${tc.border} ${tc.glow}` : ""}`} style={{ background: REEL_BG }}>
         {currentRoundResult ? (
-          <VertReel
-            key={round}
-            caseItems={caseItems}
-            result={currentRoundResult}
-            spin={spinning}
-            audioCtx={audioCtx}
-            mutedRef={mutedRef}
-          />
+          <VertReel key={round} caseItems={caseItems} result={currentRoundResult} spin={spinning} audioCtx={audioCtx} mutedRef={mutedRef} reelH={reelH} itemH={itemH} />
         ) : (
-          <div className="w-full flex items-center justify-center text-muted-foreground/20" style={{ height: REEL_H, borderRadius: 8, background: "rgba(255,255,255,0.03)" }}>
-            <Package className="w-8 h-8" />
+          <div className="w-full flex items-center justify-center text-muted-foreground/20" style={{ height: reelH, borderRadius: 8, background: "rgba(255,255,255,0.03)" }}>
+            <Package className={compact ? "w-5 h-5" : "w-8 h-8"} />
           </div>
         )}
       </div>
 
-      {/* Item just pulled — shown below reel after landing */}
+      {/* Current item */}
       {!spinning && currentRoundResult && (
         <div className="flex-shrink-0 flex flex-col items-center py-1 border-b border-border/10 bg-background/30">
-          <div className="text-[10px] font-bold truncate px-2 text-center leading-tight" style={{ color: rc }}>{currentRoundResult.name}</div>
-          <div className="text-[10px] text-muted-foreground/70"><ValDisplay value={currentRoundResult.value} size={9} /></div>
+          <div className="text-[9px] font-bold truncate px-1 text-center leading-tight" style={{ color: rc }}>{currentRoundResult.name}</div>
+          <div className="text-[9px] text-muted-foreground/70"><ValDisplay value={currentRoundResult.value} size={8} /></div>
         </div>
       )}
 
       {/* Item history */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {revealedItems.length === 0 ? (
-          <div className="text-[10px] text-muted-foreground/20 text-center py-3">—</div>
+          <div className="text-[9px] text-muted-foreground/20 text-center py-3">—</div>
         ) : (
           [...revealedItems].reverse().map(({ item, chance }, i) => {
             const c = RARITY_COLOR[item.rarity] ?? "#888";
             return (
-              <motion.div
-                key={revealedItems.length - 1 - i}
+              <motion.div key={revealedItems.length - 1 - i}
                 initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-1.5 border-b border-border/10 px-2 py-1 hover:bg-white/[0.03]"
+                className="flex items-center gap-1 border-b border-border/10 px-1.5 py-0.5 hover:bg-white/[0.03]"
               >
-                <div
-                  className="w-7 h-7 flex-shrink-0 rounded-md flex items-center justify-center"
-                  style={{ background: `${c}22`, borderLeft: `3px solid ${c}`, borderRight: `3px solid ${c}` }}
-                >
+                <div className="w-6 h-6 flex-shrink-0 rounded flex items-center justify-center" style={{ background: `${c}22`, borderLeft: `2px solid ${c}`, borderRight: `2px solid ${c}` }}>
                   {item.imageUrl
-                    ? <img src={item.imageUrl} alt={item.name} style={{ width: 18, height: 18, objectFit: "contain", imageRendering: "pixelated" }} />
-                    : <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: c }} />}
+                    ? <img src={item.imageUrl} alt={item.name} style={{ width: 14, height: 14, objectFit: "contain", imageRendering: "pixelated" }} />
+                    : <div className="w-3 h-3 rounded" style={{ backgroundColor: c }} />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[9px] font-semibold truncate leading-tight" style={{ color: c }}>{item.name}</div>
-                  <div className="text-[9px] text-muted-foreground/70"><ValDisplay value={item.value} size={8} /></div>
+                  <div className="text-[8px] font-semibold truncate leading-tight" style={{ color: c }}>{item.name}</div>
+                  <div className="text-[8px] text-muted-foreground/70"><ValDisplay value={item.value} size={7} /></div>
                 </div>
-                {chance != null && <div className="text-[8px] text-muted-foreground/40 flex-shrink-0">{chance.toFixed(2)}%</div>}
               </motion.div>
             );
           })
@@ -406,7 +376,7 @@ function LobbySlot({ player, teamIndex, isCreator, addingBot, onAddBot }: {
   player?: BattlePlayer; teamIndex: number;
   isCreator: boolean; addingBot: boolean; onAddBot: () => void;
 }) {
-  const tc = TEAM_COLORS[teamIndex] ?? TEAM_COLORS[0];
+  const tc = TEAM_COLORS[teamIndex % TEAM_COLORS.length] ?? TEAM_COLORS[0];
   return (
     <div className={`flex flex-col items-center gap-3 flex-1 min-w-0 rounded-xl border-2 p-4 transition-all ${
       !player ? "border-dashed border-border/30 bg-background/20" : `${tc.border} ${tc.bg}`
@@ -416,8 +386,7 @@ function LobbySlot({ player, teamIndex, isCreator, addingBot, onAddBot }: {
           <div className="w-14 h-14 rounded-full border-2 border-dashed border-border/30 flex items-center justify-center text-muted-foreground/30 text-2xl font-bold">?</div>
           <div className="text-sm text-muted-foreground/50">Waiting...</div>
           {isCreator && (
-            <Button size="sm" variant="outline" onClick={onAddBot} disabled={addingBot}
-              className="border-dashed border-border/50 text-muted-foreground gap-1.5 text-xs">
+            <Button size="sm" variant="outline" onClick={onAddBot} disabled={addingBot} className="border-dashed border-border/50 text-muted-foreground gap-1.5 text-xs">
               {addingBot ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
               Add Bot
             </Button>
@@ -490,7 +459,6 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
     timerRef.current = setTimeout(fn, ms);
   }, []);
 
-  // Poll while waiting
   useEffect(() => {
     if (phase !== "waiting") return;
     pollRef.current = setInterval(async () => {
@@ -509,7 +477,6 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [phase, liveBattle.id]);
 
-  // Countdown
   useEffect(() => {
     if (phase !== "countdown") return;
     if (countdown <= 0) { setPhase("playing"); return; }
@@ -517,7 +484,6 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [phase, countdown]);
 
-  // Play rounds
   useEffect(() => {
     if (phase !== "playing" || !animBattle) return;
     const totalRounds = animBattle.rounds?.length ?? 0;
@@ -525,35 +491,25 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
       if (animBattle.isDraw) {
         tick(() => setPhase("tiebreaker"), 800);
       } else {
-        tick(() => {
-          setShowWinner(true); setPhase("done");
-          if (audioCtxRef.current) playWinSound(audioCtxRef.current, mutedRef.current);
-        }, 1000);
+        tick(() => { setShowWinner(true); setPhase("done"); if (audioCtxRef.current) playWinSound(audioCtxRef.current, mutedRef.current); }, 1000);
       }
       return;
     }
     setSpinning(true);
     tick(() => {
       setSpinning(false);
-      tick(() => {
-        setRevealedRounds((r) => r + 1);
-        tick(() => setCurrentRound((r) => r + 1), 700);
-      }, 350);
+      tick(() => { setRevealedRounds((r) => r + 1); tick(() => setCurrentRound((r) => r + 1), 700); }, 350);
     }, 2400);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [phase, currentRound, animBattle]);
 
-  // Tiebreaker
   useEffect(() => {
     if (phase !== "tiebreaker" || !animBattle) return;
     tick(() => {
       setTiebreakerSpinning(true);
       tick(() => {
         setTiebreakerSpinning(false);
-        tick(() => {
-          setShowWinner(true); setPhase("done");
-          if (audioCtxRef.current) playWinSound(audioCtxRef.current, mutedRef.current);
-        }, 500);
+        tick(() => { setShowWinner(true); setPhase("done"); if (audioCtxRef.current) playWinSound(audioCtxRef.current, mutedRef.current); }, 500);
       }, 2800);
     }, 400);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
@@ -592,6 +548,9 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
   const battleType = liveBattle.battleType ?? (liveBattle.isShared ? "shared" : "normal");
   const maxPlayers = liveBattle.maxPlayers;
   const numTeams = getNumTeams(gameMode);
+  const playersPerTeam = getPlayersPerTeam(gameMode);
+  const { reelH, itemH } = getReelDims(playersPerTeam);
+  const compact = playersPerTeam >= 2 || maxPlayers > 3;
   const currentRoundData = rounds[currentRound] ?? null;
   const tiebreakerRoundData = rounds[rounds.length - 1] ?? null;
   const caseForRound = animBattle?.cases?.[currentRound] ?? animBattle?.cases?.[0];
@@ -600,6 +559,22 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
   const occupiedSlots = new Map<number, BattlePlayer>();
   for (const p of liveBattle.players) occupiedSlots.set(p.slotIndex ?? 0, p);
   const totalPrize = (liveBattle.cases ?? []).reduce((s, c) => s + (c.price ?? 0), 0) * maxPlayers;
+
+  // Running team totals based on revealed rounds
+  const runningTeamTotals = useMemo(() => {
+    const totals: Record<number, number> = {};
+    for (const ti of teamIndices) totals[ti] = 0;
+    for (const round of rounds.slice(0, revealedRounds)) {
+      for (const res of round.results) {
+        const p = players.find(pl => String(pl.userId) === String(res.userId));
+        if (p != null) totals[p.teamIndex] = (totals[p.teamIndex] ?? 0) + res.item.value;
+      }
+    }
+    return totals;
+  }, [revealedRounds, rounds, players, teamIndices]);
+
+  // Whether to use team-grouped layout (2-team battles)
+  const isTeamBattle = numTeams === 2 && playersPerTeam > 1;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background" onClick={initAudio}>
@@ -610,8 +585,6 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
           className="gap-1 text-muted-foreground hover:text-foreground text-xs font-bold px-2 h-8">
           <ArrowLeft className="w-3.5 h-3.5" />Back
         </Button>
-
-        {/* Case chips */}
         <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0 scrollbar-none">
           {liveBattle.cases?.map((c, i) => {
             const active = phase === "playing" && i === currentRound;
@@ -626,8 +599,6 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
             );
           })}
         </div>
-
-        {/* Right controls */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="flex items-center gap-1 text-xs text-muted-foreground"><Eye className="w-3 h-3" /><span>0</span></div>
           <Badge variant="outline" className="text-[10px] font-bold h-5 px-1.5">{gameMode}</Badge>
@@ -635,14 +606,12 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
             <Badge className={`text-[10px] font-bold h-5 px-1.5 border ${
               battleType === "shared" ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
               : battleType === "top_pull" ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/40"
+              : battleType === "crazy" ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
               : "bg-orange-500/20 text-orange-300 border-orange-500/40"
             }`}>
-              {battleType === "shared" ? "SHARED" : battleType === "top_pull" ? "TOP" : "TERM"}
+              {battleType === "shared" ? "SHARED" : battleType === "top_pull" ? "TOP" : battleType === "crazy" ? "🃏" : "TERM"}
             </Badge>
           )}
-          <div className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5">
-            <ValDisplay value={totalPrize} size={10} />
-          </div>
           <button
             onClick={(e) => { e.stopPropagation(); toggleMute(); initAudio(); }}
             className="w-7 h-7 rounded-md border border-border/30 bg-background/40 flex items-center justify-center hover:border-primary/50 hover:bg-primary/10 transition-all"
@@ -756,57 +725,142 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
             </div>
           )}
 
-          {/* Player columns — reel area */}
-          <div className="flex-shrink-0 flex items-stretch border-b border-border/20" style={{ background: REEL_BG }}>
-            {(() => {
-              // Only the first rendered reel column produces sounds so they don't stack
-              let colIdx = 0;
-              return teamIndices.map((teamIdx, ti) => {
-                const teamPlayers = players.filter((p) => p.teamIndex === teamIdx);
+          {/* ── Team-grouped layout (2-team modes: 2v2, 3v3) ── */}
+          {isTeamBattle ? (
+            <div className="flex-1 flex overflow-hidden min-h-0">
+              {teamIndices.map((teamIdx, ti) => {
+                const tc = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
+                const teamPlayers = players.filter(p => p.teamIndex === teamIdx).sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0));
+                const isWinningTeam = winnerTeamIndex !== undefined && teamIdx === winnerTeamIndex;
+                const isLosingTeam = winnerTeamIndex !== undefined && !isWinningTeam;
+                const teamTotal = runningTeamTotals[teamIdx] ?? 0;
+                let colIdx = ti * playersPerTeam;
+
                 return (
                   <React.Fragment key={teamIdx}>
                     {ti > 0 && (
-                      <div className="flex-shrink-0 flex items-center justify-center border-x border-border/20 bg-background/30" style={{ width: 28 }}>
-                        <span className="text-[10px] font-black text-muted-foreground/30 [writing-mode:vertical-lr]">VS</span>
+                      // Center VS divider
+                      <div className="flex-shrink-0 flex flex-col items-center justify-center bg-background/60 border-x border-border/20 z-10" style={{ width: 36 }}>
+                        <span className="font-black text-muted-foreground/40 text-sm [writing-mode:vertical-lr]">VS</span>
                       </div>
                     )}
-                    {teamPlayers.map((player) => {
-                      const isAudioCol = colIdx === 0;
-                      colIdx++;
-                      const isWinner = winnerTeamIndex !== undefined && player.teamIndex === winnerTeamIndex;
-                      const isLoser = winnerTeamIndex !== undefined && !isWinner;
-                      const roundResult = phase === "tiebreaker"
-                        ? tiebreakerRoundData?.results.find((r) => String(r.userId) === String(player.userId))?.item ?? null
-                        : currentRoundData?.results.find((r) => String(r.userId) === String(player.userId))?.item ?? null;
-                      const revealedItems = rounds.slice(0, revealedRounds).map((r, ri) => {
-                        const item = r.results.find((res) => String(res.userId) === String(player.userId))?.item;
-                        if (!item) return null;
-                        const catalogItem = animBattle.cases?.[ri]?.items.find((ci) => ci.id === item.id || (ci.name === item.name && ci.value === item.value));
-                        return { item, chance: catalogItem?.chance };
-                      }).filter(Boolean) as { item: BattleItem; chance?: number }[];
+                    {/* Team section */}
+                    <div className={`flex-1 flex flex-col min-w-0 border-2 transition-all duration-500 ${
+                      showWinner
+                        ? isWinningTeam ? `${tc.border} ${tc.bg}` : isLosingTeam ? "border-border/20 opacity-40" : "border-border/20"
+                        : "border-border/20"
+                    }`}>
+                      {/* Team header */}
+                      <div className={`flex-shrink-0 flex items-center justify-between px-3 py-1.5 border-b border-border/10 ${tc.bg}`}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${tc.solid}`} />
+                          <span className={`text-xs font-black ${tc.text}`}>Team {ti + 1}</span>
+                          {showWinner && isWinningTeam && <Crown className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />}
+                        </div>
+                        <div className={`text-xs font-bold ${showWinner && isWinningTeam ? tc.text : "text-muted-foreground"}`}>
+                          <ValDisplay value={teamTotal} size={10} />
+                        </div>
+                      </div>
 
-                      return (
-                        <PlayerColumn
-                          key={player.userId}
-                          player={player}
-                          caseItems={caseItemsForRound}
-                          currentRoundResult={roundResult}
-                          revealedItems={revealedItems}
-                          spinning={(spinning && phase === "playing") || tiebreakerSpinning}
-                          isWinner={isWinner}
-                          isLoser={isLoser}
-                          showWinner={showWinner}
-                          round={phase === "tiebreaker" ? currentRound + 1000 : currentRound}
-                          audioCtx={isAudioCol ? audioCtxRef.current : null}
-                          mutedRef={mutedRef}
-                        />
-                      );
-                    })}
+                      {/* Players side by side */}
+                      <div className="flex-1 flex overflow-hidden min-h-0" style={{ background: REEL_BG }}>
+                        {teamPlayers.map((player) => {
+                          const isAudioCol = colIdx === 0;
+                          colIdx++;
+                          const isWinner = isWinningTeam;
+                          const isLoser = isLosingTeam;
+                          const roundResult = phase === "tiebreaker"
+                            ? tiebreakerRoundData?.results.find(r => String(r.userId) === String(player.userId))?.item ?? null
+                            : currentRoundData?.results.find(r => String(r.userId) === String(player.userId))?.item ?? null;
+                          const revealedItems = rounds.slice(0, revealedRounds).map((r, ri) => {
+                            const item = r.results.find(res => String(res.userId) === String(player.userId))?.item;
+                            if (!item) return null;
+                            const catalogItem = animBattle.cases?.[ri]?.items.find(ci => ci.id === item.id || (ci.name === item.name && ci.value === item.value));
+                            return { item, chance: catalogItem?.chance };
+                          }).filter(Boolean) as { item: BattleItem; chance?: number }[];
+
+                          return (
+                            <div key={player.userId} className="flex-1 min-w-0 border-r border-border/10 last:border-r-0 flex flex-col">
+                              <PlayerColumn
+                                player={player}
+                                caseItems={caseItemsForRound}
+                                currentRoundResult={roundResult}
+                                revealedItems={revealedItems}
+                                spinning={(spinning && phase === "playing") || tiebreakerSpinning}
+                                isWinner={isWinner}
+                                isLoser={isLoser}
+                                showWinner={showWinner}
+                                round={phase === "tiebreaker" ? currentRound + 1000 : currentRound}
+                                audioCtx={isAudioCol ? audioCtxRef.current : null}
+                                mutedRef={mutedRef}
+                                reelH={reelH}
+                                itemH={itemH}
+                                compact={compact}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </React.Fragment>
                 );
-              });
-            })()}
-          </div>
+              })}
+            </div>
+          ) : (
+            // ── Linear layout for FFA / 1v1 ──
+            <div className="flex-shrink-0 flex items-stretch border-b border-border/20" style={{ background: REEL_BG }}>
+              {(() => {
+                let colIdx = 0;
+                return teamIndices.map((teamIdx, ti) => {
+                  const teamPlayers = players.filter(p => p.teamIndex === teamIdx);
+                  return (
+                    <React.Fragment key={teamIdx}>
+                      {ti > 0 && (
+                        <div className="flex-shrink-0 flex items-center justify-center border-x border-border/20 bg-background/30" style={{ width: 28 }}>
+                          <span className="text-[10px] font-black text-muted-foreground/30 [writing-mode:vertical-lr]">VS</span>
+                        </div>
+                      )}
+                      {teamPlayers.map((player) => {
+                        const isAudioCol = colIdx === 0;
+                        colIdx++;
+                        const isWinner = winnerTeamIndex !== undefined && player.teamIndex === winnerTeamIndex;
+                        const isLoser = winnerTeamIndex !== undefined && !isWinner;
+                        const roundResult = phase === "tiebreaker"
+                          ? tiebreakerRoundData?.results.find(r => String(r.userId) === String(player.userId))?.item ?? null
+                          : currentRoundData?.results.find(r => String(r.userId) === String(player.userId))?.item ?? null;
+                        const revealedItems = rounds.slice(0, revealedRounds).map((r, ri) => {
+                          const item = r.results.find(res => String(res.userId) === String(player.userId))?.item;
+                          if (!item) return null;
+                          const catalogItem = animBattle.cases?.[ri]?.items.find(ci => ci.id === item.id || (ci.name === item.name && ci.value === item.value));
+                          return { item, chance: catalogItem?.chance };
+                        }).filter(Boolean) as { item: BattleItem; chance?: number }[];
+
+                        return (
+                          <PlayerColumn
+                            key={player.userId}
+                            player={player}
+                            caseItems={caseItemsForRound}
+                            currentRoundResult={roundResult}
+                            revealedItems={revealedItems}
+                            spinning={(spinning && phase === "playing") || tiebreakerSpinning}
+                            isWinner={isWinner}
+                            isLoser={isLoser}
+                            showWinner={showWinner}
+                            round={phase === "tiebreaker" ? currentRound + 1000 : currentRound}
+                            audioCtx={isAudioCol ? audioCtxRef.current : null}
+                            mutedRef={mutedRef}
+                            reelH={reelH}
+                            itemH={itemH}
+                            compact={compact}
+                          />
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                });
+              })()}
+            </div>
+          )}
         </div>
       )}
 
@@ -825,7 +879,7 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
                   <div>
                     <div className="font-bold text-sm text-cyan-300">Everyone shares the prize!</div>
                     <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      Each: <ValDisplay value={Math.floor(totalPrize / Math.max(animBattle.players.filter((p) => !p.isBot).length, 1))} size={11} />
+                      Each: <ValDisplay value={Math.floor(totalPrize / Math.max(animBattle.players.filter(p => !p.isBot).length, 1))} size={11} />
                     </div>
                   </div>
                 </>
@@ -833,16 +887,16 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
                 <>
                   <span className="text-lg">🏆</span>
                   {(() => {
-                    const wp = animBattle.players.filter((p) => p.teamIndex === winnerTeamIndex);
-                    const isMe = wp.some((p) => String(p.userId) === String(currentUserId));
-                    const tc = TEAM_COLORS[winnerTeamIndex] ?? TEAM_COLORS[0];
+                    const wp = animBattle.players.filter(p => p.teamIndex === winnerTeamIndex);
+                    const isMe = wp.some(p => String(p.userId) === String(currentUserId));
+                    const tc = TEAM_COLORS[winnerTeamIndex % TEAM_COLORS.length] ?? TEAM_COLORS[0];
                     return (
                       <div>
                         <div className={`font-bold text-sm ${tc.text}`}>
-                          {isMe ? "You win! 🎉" : `${wp.map((p) => p.username).join(" & ")} wins!`}
+                          {isMe ? "You win! 🎉" : `${wp.map(p => p.username).join(" & ")} wins!`}
                         </div>
                         <div className="text-xs text-muted-foreground flex items-center gap-1">
-                          Prize: <ValDisplay value={totalPrize} size={11} />
+                          Items won from cases
                         </div>
                       </div>
                     );
@@ -854,9 +908,7 @@ export function BattleScreen({ battle: initialBattle, currentUserId, isCreator =
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {onCopyBattle && (
-                <Button size="sm" variant="outline" onClick={() => onCopyBattle(animBattle)} className="text-xs">
-                  Replay
-                </Button>
+                <Button size="sm" variant="outline" onClick={() => onCopyBattle(animBattle)} className="text-xs">Replay</Button>
               )}
               <Button size="sm" onClick={onClose} className="text-xs bg-primary hover:bg-primary/90">Close</Button>
             </div>
