@@ -11,6 +11,8 @@ local ITEM_BGL = 4532 -- Blue Gem Lock  (= 100 DL)
 local ITEM_DL  = 1796 -- Diamond Lock   (= 1 DL)
 local ITEM_WL  = 242  -- World Lock     (= 0.01 DL)
 
+local DEPOSIT_DURATION = 120 -- seconds the player has to drop after bot joins
+
 local claimed_worlds = {}
 local processing_wd  = {}
 local activeDeposit  = nil
@@ -178,7 +180,7 @@ local function poll_deposits(bot)
             activeDeposit = {
                 world        = world,
                 growId       = tostring(growId),
-                expiresAt    = expiresAt,
+                expiresAt    = os.time() + DEPOSIT_DURATION,
                 prevBGL      = prevBGL,
                 prevDL       = prevDL,
                 prevWL       = prevWL,

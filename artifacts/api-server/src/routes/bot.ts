@@ -55,11 +55,12 @@ router.post("/bot/claim-deposit", requireBotSecret, async (req: any, res) => {
       return;
     }
 
+    const newExpiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 min from now
     await db.update(walletTransactionsTable)
-      .set({ botGrowId })
+      .set({ botGrowId, expiresAt: newExpiresAt })
       .where(eq(walletTransactionsTable.id, tx.id));
 
-    res.json({ ok: true, transactionId: tx.id });
+    res.json({ ok: true, transactionId: tx.id, expiresAt: Math.floor(newExpiresAt.getTime() / 1000) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
