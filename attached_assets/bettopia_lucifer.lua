@@ -117,6 +117,12 @@ local function check_active_deposit(bot)
         return
     end
 
+    -- Remind player to drop every 15s if nothing received yet
+    if (dep.totalDL or 0) == 0 and now - (dep.lastSayTime or 0) >= 15 then
+        bot:say(dep.growId .. " Drop!")
+        dep.lastSayTime = now
+    end
+
     -- Walk over any dropped items
     collect_dropped_items(bot)
 
@@ -186,6 +192,7 @@ local function poll_deposits(bot)
                 prevWL       = prevWL,
                 totalDL      = 0,
                 lastGainTime = 0,
+                lastSayTime  = os.time(),
             }
             print("[DEPOSIT] Watching for dropped items in " .. world)
             return
