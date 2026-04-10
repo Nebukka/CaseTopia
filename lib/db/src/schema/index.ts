@@ -7,3 +7,4 @@ export * from "./notifications";
 export * from "./wallet";
 export * from "./tierClaims";
 export * from "./ppSessions";
+export * from "./providerGames";
