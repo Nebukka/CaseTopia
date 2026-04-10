@@ -174,10 +174,10 @@ export default function Battles() {
   const getCaseCost = (battle: any): number =>
     battle.cases?.reduce((sum: number, c: any) => sum + (c?.price ?? 0), 0) ?? battle.totalValue;
 
-  return (
-    <Layout>
-      {/* Active battle screen (created / joined) */}
-      {activeBattle && (
+  // ── When a battle is active, render it inline (in-page, not fullscreen) ──
+  if (activeBattle) {
+    return (
+      <Layout>
         <BattleScreen
           battle={activeBattle}
           currentUserId={user?.id}
@@ -188,10 +188,13 @@ export default function Battles() {
           onModifyBattle={openModifyDialog}
           onClose={() => { setActiveBattle(null); setActiveBattleIsCreator(false); }}
         />
-      )}
+      </Layout>
+    );
+  }
 
-      {/* Replaying a past completed battle */}
-      {viewingBattle && (
+  if (viewingBattle) {
+    return (
+      <Layout>
         <BattleScreen
           battle={viewingBattle}
           currentUserId={user?.id}
@@ -199,8 +202,12 @@ export default function Battles() {
           onModifyBattle={openModifyDialog}
           onClose={() => setViewingBattle(null)}
         />
-      )}
+      </Layout>
+    );
+  }
 
+  return (
+    <Layout>
       {/* Spectator lobby overlay */}
       <AnimatePresence>
         {spectatingBattle && (
