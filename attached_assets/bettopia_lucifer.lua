@@ -66,16 +66,16 @@ local function collect_dropped_items(bot)
                 local tx = math.floor(px / 32)
                 local ty = math.floor(py / 32)
                 print("[COLLECT] Item " .. id .. " px=" .. px .. "," .. py .. " tile=" .. tx .. "," .. ty)
-                -- Move to item first
+                -- Move to item and wait long enough to walk up to 8 tiles
                 pcall(function() bot:moveTo(tx, ty) end)
-                sleep(400)
+                sleep(1500)
                 -- Try every known collection method
                 local rc = pcall(function() bot:collect(obj.oid) end)
                 if not rc then pcall(function() bot:collect(px, py) end) end
                 if not rc then pcall(function() bot:collect(tx, ty) end) end
                 pcall(function() bot:punch(tx, ty) end)
                 pcall(function() bot:punch(px, py) end)
-                sleep(200)
+                sleep(300)
             end
         end
     end
