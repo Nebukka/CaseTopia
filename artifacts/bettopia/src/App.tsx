@@ -24,7 +24,7 @@ import Crash from "./pages/Crash";
 import Mines from "./pages/Mines";
 import Tower from "./pages/Cross";
 import DailyClaim from "./pages/DailyClaim";
-import SweetBonanza from "./pages/SweetBonanza";
+import SweetBonanza from "./pages/SweetBonanzaGame";
 import SweetBonanza1000 from "./pages/SweetBonanza1000";
 import GatesOfOlympus from "./pages/GatesOfOlympus";
 

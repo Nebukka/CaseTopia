@@ -14,6 +14,7 @@ import sseRouter from "./sse";
 import walletRouter from "./wallet";
 import botRouter from "./bot";
 import dailyRouter from "./daily";
+import sweetBonanzaRouter from "./sweetbonanza";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(presenceRouter);
 router.use(walletRouter);
 router.use(botRouter);
 router.use(dailyRouter);
+router.use(sweetBonanzaRouter);
 
 export default router;
