@@ -14,7 +14,7 @@ export default function SweetBonanza1000() {
           style={{ height: "calc(100vh - 180px)", minHeight: 520 }}
         >
           <iframe
-            src="https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20sbn1000&lang=en&cur=EUR&jurisdiction=MT"
+            src="https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20sbn1000&lang=en&cur=DL&jurisdiction=MT"
             title="Sweet Bonanza 1000"
             className="w-full h-full"
             allow="fullscreen"

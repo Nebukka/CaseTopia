@@ -14,7 +14,7 @@ export default function GatesOfOlympus() {
           style={{ height: "calc(100vh - 180px)", minHeight: 520 }}
         >
           <iframe
-            src="https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20olympgate&lang=en&cur=EUR&jurisdiction=MT"
+            src="https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20olympgate&lang=en&cur=DL&jurisdiction=MT"
             title="Gates of Olympus"
             className="w-full h-full"
             allow="fullscreen"
